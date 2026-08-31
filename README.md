@@ -34,8 +34,8 @@ Unity 6로 만드는 1인칭 스텔스 호러 탈출 게임.
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | P1 | 저장소·Unity 프로젝트 셋업 (URP / Input System / AI Navigation) | ✅ 완료 |
-| P2 | 플레이어 컨트롤러 (이동·달리기·앉기·스태미나·손전등) | 🚧 진행 중 |
-| P3 | 상호작용 · 아이템 · 인벤토리 · 물리 문 | ⬜ |
+| P2 | 플레이어 컨트롤러 (이동·달리기·앉기·스태미나·손전등) | ✅ 완료 |
+| P3 | 상호작용 · 아이템 · 인벤토리 · 문/서랍/옷장 · HUD | 🚧 진행 중 |
 | P4 | 소음 전파 시스템 | ⬜ |
 | P5 | 그래니 AI (NavMesh · 시야 · 청각 · FSM) | ⬜ |
 | P6 | 저택 레벨 (4개 층) · 조명 · 랜덤 스폰 | ⬜ |
@@ -83,6 +83,12 @@ Unity Hub에서 **6000.5.8f1** 버전으로 `GrannyGame/` 폴더를 엽니다.
 
 ```powershell
 ./tools/unity.ps1 run -Method Granny.EditorTools.PlayerRigBuilder.Run
+```
+
+아이템·가구·HUD를 다시 만들고 House 씬에 배치할 때:
+
+```powershell
+./tools/unity.ps1 run -Method Granny.EditorTools.ContentBuilder.Run
 ```
 
 결과를 다시 읽어보려면:
