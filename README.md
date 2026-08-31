@@ -36,8 +36,8 @@ Unity 6로 만드는 1인칭 스텔스 호러 탈출 게임.
 | P1 | 저장소·Unity 프로젝트 셋업 (URP / Input System / AI Navigation) | ✅ 완료 |
 | P2 | 플레이어 컨트롤러 (이동·달리기·앉기·스태미나·손전등) | ✅ 완료 |
 | P3 | 상호작용 · 아이템 · 인벤토리 · 문/서랍/옷장 · HUD | ✅ 완료 |
-| P4 | 그래니 AI · 소음 청취 · 5일 루프 · 정문 3중 잠금 | 🚧 진행 중 |
-| P5 | 저택 레벨 (4개 층) · 조명 · 랜덤 스폰 | ⬜ |
+| P4 | 그래니 AI · 소음 청취 · 5일 루프 · 정문 3중 잠금 | ✅ 완료 |
+| P5 | 저택 레벨 (4개 층) · 조명 · 랜덤 스폰 | 🚧 진행 중 |
 | P6 | 세이브/로드 · 메인 메뉴 · 설정 | ⬜ |
 | P7 | 보조 탈출 루트 (차고 · 하수구) · 금고 퍼즐 | ⬜ |
 | P8 | 곰덫 배치 · 밸런싱 | ⬜ |
@@ -91,7 +91,13 @@ Unity Hub에서 **6000.5.8f1** 버전으로 `GrannyGame/` 폴더를 엽니다.
 ./tools/unity.ps1 run -Method Granny.EditorTools.ContentBuilder.Run
 ```
 
-그래니 프리팹·난이도 테이블·순찰 지점·NavMesh를 다시 만들 때:
+저택(4개 층·계단·가구·조명·NavMesh)을 다시 만들 때:
+
+```powershell
+./tools/unity.ps1 run -Method Granny.EditorTools.HouseBuilder.Run
+```
+
+그래니 프리팹·난이도 테이블을 다시 만들 때:
 
 ```powershell
 ./tools/unity.ps1 run -Method Granny.EditorTools.GrannyBuilder.Run
@@ -103,9 +109,9 @@ Unity Hub에서 **6000.5.8f1** 버전으로 `GrannyGame/` 폴더를 엽니다.
 ./tools/unity.ps1 run -Method Granny.EditorTools.EscapeBuilder.Run
 ```
 
-> 씬을 처음부터 다시 만들 경우 순서가 중요합니다:
-> `ProjectBootstrap` → `PlayerRigBuilder` → `ContentBuilder` → `GrannyBuilder` → `EscapeBuilder`.
-> 뒤쪽 빌더가 앞쪽이 만든 프리팹과 배치를 참조합니다.
+> 씬을 처음부터 다시 만들 경우 **순서가 중요합니다**:
+> `ProjectBootstrap` → `PlayerRigBuilder` → `HouseBuilder` → `ContentBuilder` → `GrannyBuilder` → `EscapeBuilder`.
+> 각 빌더는 앞선 빌더가 만든 프리팹과 마커를 참조하고, 마지막 두 개가 NavMesh를 다시 굽습니다.
 
 결과를 다시 읽어보려면:
 

@@ -5,7 +5,8 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "Granny.Core",
-        "Granny.Gameplay"
+        "Granny.Gameplay",
+        "Unity.AI.Navigation"
     ],
     "includePlatforms": [
         "Editor"

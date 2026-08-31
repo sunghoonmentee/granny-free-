@@ -34,11 +34,11 @@ namespace Granny.EditorTools
         {
             EnsureFolders();
 
-            var items = BuildItems();
-            var furniture = BuildFurniture();
+            BuildItems();
+            BuildFurniture();
             var hud = BuildHud();
 
-            PopulateHouse(items, furniture, hud);
+            InstallHud(hud);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -420,65 +420,29 @@ namespace Granny.EditorTools
         // Scene assembly
         // ------------------------------------------------------------------
 
-        static void PopulateHouse(List<ItemDefinition> items, Furniture furniture, GameObject hud)
+        /// <summary>
+        /// Puts the HUD and an event system in the scene. Where the furniture goes
+        /// is the level's business, not this builder's — HouseBuilder owns that, so
+        /// re-running this to tweak an item never disturbs the layout.
+        /// </summary>
+        static void InstallHud(GameObject hud)
         {
             var scene = EditorSceneManager.OpenScene(HouseScenePath, OpenSceneMode.Single);
 
             foreach (var root in scene.GetRootGameObjects())
-                if (root.name is "Furnishings" or "HUD")
+                if (root.name is "HUD" or "EventSystem")
                     Object.DestroyImmediate(root);
-
-            var parent = new GameObject("Furnishings").transform;
-
-            // Three dressers in three corners. Which one holds which tool is
-            // decided at level setup in a later phase; for now the order is fixed
-            // so the greybox is predictable to test against.
-            var placements = new[]
-            {
-                (position: new Vector3(-8f, 0f, 8f), yaw: 135f),
-                (position: new Vector3(8f, 0f, 8f), yaw: -135f),
-                (position: new Vector3(-8f, 0f, -8f), yaw: 45f),
-            };
-
-            for (var i = 0; i < placements.Length; i++)
-            {
-                var dresser = (GameObject)PrefabUtility.InstantiatePrefab(furniture.Drawer, parent);
-                dresser.transform.SetPositionAndRotation(
-                    placements[i].position, Quaternion.Euler(0f, placements[i].yaw, 0f));
-
-                if (i >= items.Count) continue;
-
-                var drawer = dresser.GetComponent<Drawer>();
-                Wire(drawer, "contents", items[i]);
-            }
-
-            var wardrobe = (GameObject)PrefabUtility.InstantiatePrefab(furniture.Wardrobe, parent);
-            wardrobe.transform.SetPositionAndRotation(new Vector3(8f, 0f, -8f), Quaternion.Euler(0f, 180f, 0f));
-
-            var door = (GameObject)PrefabUtility.InstantiatePrefab(furniture.Door, parent);
-            door.transform.SetPositionAndRotation(new Vector3(-3.5f, 0f, 0f), Quaternion.identity);
-
-            // The bottle starts on the floor so throwing can be tried immediately.
-            var bottle = items.Find(i => i.Id == "bottle");
-            if (bottle != null && bottle.WorldPrefab != null)
-            {
-                var loose = (GameObject)PrefabUtility.InstantiatePrefab(bottle.WorldPrefab, parent);
-                loose.transform.position = new Vector3(1.5f, 0.3f, -5f);
-            }
 
             PrefabUtility.InstantiatePrefab(hud, scene);
 
-            if (Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
-            {
-                var events = new GameObject("EventSystem",
-                    typeof(UnityEngine.EventSystems.EventSystem),
-                    typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule));
-                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(events, scene);
-            }
+            var events = new GameObject("EventSystem",
+                typeof(UnityEngine.EventSystems.EventSystem),
+                typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule));
+            UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(events, scene);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log("[Content] House scene furnished");
+            Debug.Log("[Content] HUD installed");
         }
 
         // ------------------------------------------------------------------
