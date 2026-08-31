@@ -6,6 +6,7 @@
         "Granny.Gameplay",
         "Granny.UI",
         "Unity.InputSystem",
+        "Unity.AI.Navigation",
         "UnityEngine.UI",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.RenderPipelines.Universal.Editor",
