@@ -1,17 +1,12 @@
 {
-    "name": "Granny.Editor",
-    "rootNamespace": "Granny.EditorTools",
+    "name": "Granny.Gameplay",
+    "rootNamespace": "Granny.Gameplay",
     "references": [
         "Granny.Core",
-        "Granny.Gameplay",
         "Unity.InputSystem",
-        "Unity.RenderPipelines.Universal.Runtime",
-        "Unity.RenderPipelines.Universal.Editor",
-        "Unity.RenderPipelines.Core.Runtime"
+        "Unity.AI.Navigation"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
