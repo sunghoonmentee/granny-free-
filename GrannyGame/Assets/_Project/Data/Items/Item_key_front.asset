@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cba4affd5b096bd4ea8fd9d5526c9ce6, type: 3}
+  m_Name: Item_key_front
+  m_EditorClassIdentifier: Granny.Core::Granny.Core.ItemDefinition
+  id: key.front
+  displayName: Rusty Key
+  description: 
+  icon: {fileID: 0}
+  carry: 1
+  worldPrefab: {fileID: 7298134114990047450, guid: aabcbc08f24d56d4abb665529fdaa3a4, type: 3}
+  tags:
+  - key.front
+  - unlock
+  consumedOnUse: 0
+  impactLoudness: 0.4

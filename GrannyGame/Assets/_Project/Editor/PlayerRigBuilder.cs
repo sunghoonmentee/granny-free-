@@ -106,6 +106,9 @@ namespace Granny.EditorTools
             var motor = root.AddComponent<PlayerMotor>();
             var look = root.AddComponent<PlayerLook>();
             var bob = root.AddComponent<HeadBob>();
+            var interactor = root.AddComponent<PlayerInteractor>();
+            var inventory = root.AddComponent<PlayerInventory>();
+            root.AddComponent<FootstepNoise>();
             var torch = torchGo.AddComponent<PlayerFlashlight>();
 
             Wire(input, "actions", actions);
@@ -118,6 +121,14 @@ namespace Granny.EditorTools
             Wire(look, "cameraPivot", pivot);
 
             Wire(bob, "bobTarget", bobTarget);
+
+            // Both aim from the camera, so items are dropped and interacted with
+            // exactly where the player is looking rather than where the body faces.
+            Wire(interactor, "input", input);
+            Wire(interactor, "eye", cameraGo.transform);
+
+            Wire(inventory, "input", input);
+            Wire(inventory, "dropOrigin", cameraGo.transform);
 
             Wire(torch, "input", input);
             Wire(torch, "beam", beam);

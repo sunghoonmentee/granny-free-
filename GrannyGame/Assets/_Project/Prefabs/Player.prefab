@@ -300,6 +300,9 @@ GameObject:
   - component: {fileID: 7253665279723020907}
   - component: {fileID: 3562170963029238275}
   - component: {fileID: 1522136515823875370}
+  - component: {fileID: 8203499167909075911}
+  - component: {fileID: 3443100705337497205}
+  - component: {fileID: 6313463476230661187}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -431,6 +434,58 @@ MonoBehaviour:
   sprintFrequency: 3.2
   blendSpeed: 8
   lateralRatio: 0.5
+--- !u!114 &8203499167909075911
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8405471997873073444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7bf840363c7ad54faf7f054c89d6cc1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Player.PlayerInteractor
+  range: 2.6
+  forgiveness: 0.18
+  input: {fileID: 3827262472378524724}
+  eye: {fileID: 3341144306727331841}
+--- !u!114 &3443100705337497205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8405471997873073444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55b168082e38382469b3ff46f0c62bb7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Player.PlayerInventory
+  pocketSlots: 5
+  dropOrigin: {fileID: 3341144306727331841}
+  dropDistance: 0.7
+  throwSpeed: 9
+  throwSpin: 4
+  input: {fileID: 3827262472378524724}
+--- !u!114 &6313463476230661187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8405471997873073444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc187e2409874ff49853e30764c3a0c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Player.FootstepNoise
+  crouchRadius: 2.5
+  walkRadius: 7
+  sprintRadius: 14
+  crouchInterval: 0.72
+  walkInterval: 0.5
+  sprintInterval: 0.32
 --- !u!1 &9082950872087997385
 GameObject:
   m_ObjectHideFlags: 0
