@@ -18,8 +18,12 @@ namespace Granny.EditorTools
         const string MaterialDir = "Assets/_Project/Art/Materials";
         const string HouseScenePath = "Assets/_Project/Scenes/House.unity";
 
-        /// <summary>In the greybox room the north wall sits at z = +10.</summary>
-        static readonly Vector3 DoorPosition = new(0f, 0f, 9.6f);
+        /// <summary>
+        /// The house's north wall runs along z = +10 and HouseBuilder leaves an
+        /// opening at x = 0 for exactly this. The frame sits in the opening rather
+        /// than in front of it, so there is no gap to see through.
+        /// </summary>
+        static readonly Vector3 DoorPosition = new(0f, 0f, 10f);
 
         /// <summary>
         /// The three fastenings, in the order they appear on the door. Each wants
@@ -73,6 +77,8 @@ namespace Granny.EditorTools
             var hinge = root2.AddComponent<HingeDoor>();
             Wire(hinge, "leaf", pivot);
 
+            var builtStages = new System.Collections.Generic.List<LockStage>();
+
             foreach (var spec in Stages)
             {
                 var holder = new GameObject($"Lock_{spec.id}");
@@ -94,10 +100,21 @@ namespace Granny.EditorTools
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 holder.SetActive(true);
+                builtStages.Add(stage);
             }
 
             var escape = root2.AddComponent<EscapeDoor>();
             Wire(escape, "leaf", hinge);
+
+            // Wired explicitly rather than left to the runtime fallback, so the
+            // saved scene records which fastenings hold this door and the
+            // relationship is visible in the inspector.
+            var stagesSo = new SerializedObject(escape);
+            var stagesProp = stagesSo.FindProperty("stages");
+            stagesProp.arraySize = builtStages.Count;
+            for (var i = 0; i < builtStages.Count; i++)
+                stagesProp.GetArrayElementAtIndex(i).objectReferenceValue = builtStages[i];
+            stagesSo.ApplyModifiedPropertiesWithoutUndo();
 
             // This builder runs after GrannyBuilder baked the NavMesh, and it has
             // just replaced a solid slab with a door frame. Rebake, or she walks

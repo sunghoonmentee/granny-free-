@@ -23,9 +23,26 @@ namespace Granny.Gameplay.Interaction
         [SerializeField] HingeDoor leaf;
         [SerializeField, Min(0f)] float openNoiseRadius = 25f;
 
-        public bool IsUnlocked => stages.All(s => s == null || s.IsCleared);
+        /// <summary>
+        /// The fastenings, resolved on first use rather than in Awake. Edit-mode
+        /// tooling and tests inspect this door without ever running the
+        /// MonoBehaviour lifecycle, and a door that reports "nothing holding it"
+        /// until Awake fires is a dangerous thing to get wrong.
+        /// </summary>
+        LockStage[] Stages
+        {
+            get
+            {
+                if (stages == null || stages.Length == 0)
+                    stages = GetComponentsInChildren<LockStage>(includeInactive: true);
 
-        public int StagesRemaining => stages.Count(s => s != null && !s.IsCleared);
+                return stages;
+            }
+        }
+
+        public bool IsUnlocked => Stages.All(s => s == null || s.IsCleared);
+
+        public int StagesRemaining => Stages.Count(s => s != null && !s.IsCleared);
 
         /// <summary>Raised once, when the player steps through.</summary>
         public event Action Escaped;
@@ -48,9 +65,7 @@ namespace Granny.Gameplay.Interaction
 
         void Awake()
         {
-            if (stages.Length == 0)
-                stages = GetComponentsInChildren<LockStage>(includeInactive: true);
-
+            _ = Stages;
             if (leaf == null) leaf = GetComponentInChildren<HingeDoor>();
             gameObject.layer = GameLayers.Interactable;
         }
@@ -84,7 +99,7 @@ namespace Granny.Gameplay.Interaction
         public void Restore()
         {
             used = false;
-            foreach (var stage in stages)
+            foreach (var stage in Stages)
                 if (stage != null) stage.Restore();
         }
     }

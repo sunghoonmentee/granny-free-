@@ -175,67 +175,55 @@ namespace Granny.EditorTools
         // Scene
         // ------------------------------------------------------------------
 
-        static readonly Vector3[] PatrolPositions =
-        {
-            new(-7f, 0f, 7f),
-            new(7f, 0f, 7f),
-            new(7f, 0f, -7f),
-            new(-7f, 0f, -7f),
-            new(0f, 0f, 0f),
-        };
-
+        /// <summary>
+        /// Places the hunter and the director. The patrol markers, the bed and her
+        /// starting spot belong to the level, so they are looked up rather than
+        /// recreated — re-running this to retune difficulty must not move the house.
+        /// </summary>
         static void PopulateScene(GameObject grannyPrefab, DifficultyProfile difficulty)
         {
             var scene = EditorSceneManager.OpenScene(HouseScenePath, OpenSceneMode.Single);
 
             foreach (var root in scene.GetRootGameObjects())
-                if (root.name is "Granny" or "Navigation" or "Director" or "PatrolPoints" or "Bed")
+                if (root.name is "Granny" or "Director")
                     Object.DestroyImmediate(root);
 
-            // Patrol markers are tagged so the brain can find them without a
-            // hand-maintained list in the inspector.
-            var patrolRoot = new GameObject("PatrolPoints").transform;
             var patrolPoints = new List<Transform>();
+            foreach (var marker in GameObject.FindGameObjectsWithTag("SpawnPoint"))
+                patrolPoints.Add(marker.transform);
 
-            for (var i = 0; i < PatrolPositions.Length; i++)
-            {
-                var point = new GameObject($"Patrol_{i}");
-                point.tag = "SpawnPoint";
-                point.transform.SetParent(patrolRoot, false);
-                point.transform.position = PatrolPositions[i];
-                patrolPoints.Add(point.transform);
-            }
+            if (patrolPoints.Count == 0)
+                Debug.LogWarning("[Granny] No patrol markers found. Run Granny > Build House first.");
 
-            var bed = new GameObject("Bed");
-            bed.transform.position = BedPosition;
-
-            var grannySpawnMarker = new GameObject("GrannySpawn");
-            grannySpawnMarker.transform.SetParent(patrolRoot, false);
-            grannySpawnMarker.transform.position = GrannySpawn;
+            var spawnMarker = FindByName("GrannySpawn");
+            var bed = FindByName("Bed");
+            var spawnPosition = spawnMarker != null ? spawnMarker.position : GrannySpawn;
 
             var granny = (GameObject)PrefabUtility.InstantiatePrefab(grannyPrefab, scene);
-            granny.transform.position = GrannySpawn;
+            granny.transform.position = spawnPosition;
             granny.GetComponent<GrannyBrain>().SetPatrolPoints(patrolPoints);
-
-            var navigation = new GameObject("Navigation");
-            var surface = navigation.AddComponent<NavMeshSurface>();
-            surface.collectObjects = CollectObjects.All;
-            surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
-            surface.layerMask = (1 << GameLayers.LevelGeometry) | (1 << GameLayers.Prop);
-            surface.BuildNavMesh();
 
             var director = new GameObject("Director").AddComponent<GameDirector>();
             Wire(director, "difficulty", difficulty);
             Wire(director, "granny", granny.GetComponent<GrannyBrain>());
-            Wire(director, "bed", bed.transform);
-            Wire(director, "grannySpawn", grannySpawnMarker.transform);
+            if (bed != null) Wire(director, "bed", bed);
+            if (spawnMarker != null) Wire(director, "grannySpawn", spawnMarker);
 
             var player = Object.FindAnyObjectByType<PlayerMotor>();
             if (player != null) Wire(director, "player", player);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log("[Granny] scene populated and NavMesh baked");
+            Debug.Log($"[Granny] placed with {patrolPoints.Count} patrol points");
+        }
+
+        static Transform FindByName(string name)
+        {
+            foreach (var transform in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+                if (transform != null && transform.name == name)
+                    return transform;
+
+            return null;
         }
 
         // ------------------------------------------------------------------
