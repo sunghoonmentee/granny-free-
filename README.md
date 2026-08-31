@@ -33,8 +33,8 @@ Unity 6로 만드는 1인칭 스텔스 호러 탈출 게임.
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| P1 | 저장소·Unity 프로젝트 셋업 (URP / Input System / AI Navigation) | 🚧 진행 중 |
-| P2 | 플레이어 컨트롤러 (이동·달리기·앉기·스태미나·손전등) | ⬜ |
+| P1 | 저장소·Unity 프로젝트 셋업 (URP / Input System / AI Navigation) | ✅ 완료 |
+| P2 | 플레이어 컨트롤러 (이동·달리기·앉기·스태미나·손전등) | 🚧 진행 중 |
 | P3 | 상호작용 · 아이템 · 인벤토리 · 물리 문 | ⬜ |
 | P4 | 소음 전파 시스템 | ⬜ |
 | P5 | 그래니 AI (NavMesh · 시야 · 청각 · FSM) | ⬜ |
@@ -57,17 +57,44 @@ git lfs pull
 
 Unity Hub에서 **6000.5.8f1** 버전으로 `GrannyGame/` 폴더를 엽니다.
 
-### 명령줄에서 컴파일 확인
+### 명령줄 작업 — `tools/unity.ps1`
 
-```bash
-"/c/Program Files/Unity/Hub/Editor/6000.5.8f1/Editor/Unity.exe" -batchmode -quit -nographics -projectPath GrannyGame -logFile -
+에디터를 열지 않고 컴파일·셋업·테스트를 돌립니다. 로그는 `.unity-logs/`에 남습니다.
+
+```powershell
+./tools/unity.ps1 compile
 ```
 
-### 테스트 실행
-
-```bash
-"/c/Program Files/Unity/Hub/Editor/6000.5.8f1/Editor/Unity.exe" -batchmode -runTests -projectPath GrannyGame -testPlatform EditMode -testResults TestResults-EditMode.xml
+```powershell
+./tools/unity.ps1 test -Platform EditMode
 ```
+
+```powershell
+./tools/unity.ps1 test -Platform PlayMode
+```
+
+프로젝트 셋업을 다시 적용해야 할 때 (URP·레이어·씬 재생성):
+
+```powershell
+./tools/unity.ps1 run -Method Granny.EditorTools.ProjectBootstrap.Run
+```
+
+플레이어 프리팹을 다시 만들 때:
+
+```powershell
+./tools/unity.ps1 run -Method Granny.EditorTools.PlayerRigBuilder.Run
+```
+
+결과를 다시 읽어보려면:
+
+```powershell
+./tools/report-tests.ps1 unity-logs/TestResults-PlayMode.xml
+```
+
+> 배치모드 Unity에는 두 가지 함정이 있어 `unity.ps1`이 이를 흡수합니다.
+> 스크립트를 새로 컴파일하면 요청한 작업을 건너뛰고 종료하므로 한 번 자동 재시도하고,
+> 비정상 종료 시 남는 잠금 파일도 정리합니다.
+> (로그 폴더 이름에 점을 앞에 붙이면 Unity가 경로를 거부하므로 `unity-logs/`입니다.)
 
 ---
 
@@ -95,17 +122,21 @@ GrannyGame/Assets/_Project/
 
 ## 조작법
 
-| 키 | 동작 |
-|---|---|
-| `W A S D` | 이동 |
-| `Shift` | 달리기 (스태미나 소모, 소음 큼) |
-| `Ctrl` | 앉기 (느리지만 거의 무음) |
-| `E` | 상호작용 / 줍기 |
-| `Q` | 손에 든 물건 놓기 |
-| `마우스 좌클릭` | 던지기 |
-| `F` | 손전등 |
-| `1`–`5` | 아이템 슬롯 |
-| `Esc` | 일시정지 |
+| 키 | 게임패드 | 동작 |
+|---|---|---|
+| `W A S D` / 방향키 | 왼쪽 스틱 | 이동 — 2.6 m/s |
+| `Shift` | L3 | 달리기 — 4.8 m/s, 스태미나 6초, 소음 큼 |
+| `Ctrl` / `C` | B | 앉기 — 1.15 m/s, 거의 무음 |
+| 마우스 | 오른쪽 스틱 | 시점 |
+| `E` | X | 상호작용 / 줍기 |
+| `Q` | — | 손에 든 물건 놓기 |
+| 마우스 좌클릭 | RT | 던지기 |
+| `F` | D-Pad ↑ | 손전등 (배터리 240초) |
+| `1`–`5` | — | 아이템 슬롯 |
+| `Esc` | Start | 일시정지 |
+
+스태미나를 전부 소진하면 35%까지 회복될 때까지 달릴 수 없습니다.
+손전등 배터리가 15% 아래로 떨어지면 깜빡이기 시작합니다.
 
 ---
 

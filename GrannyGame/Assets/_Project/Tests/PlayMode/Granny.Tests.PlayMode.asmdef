@@ -1,15 +1,15 @@
 {
-    "name": "Granny.Tests.EditMode",
+    "name": "Granny.Tests.PlayMode",
     "rootNamespace": "Granny.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "Granny.Core",
-        "Granny.Gameplay"
+        "Granny.Gameplay",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
