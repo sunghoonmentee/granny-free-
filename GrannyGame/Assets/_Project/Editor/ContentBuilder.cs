@@ -295,7 +295,52 @@ namespace Granny.EditorTools
             Wire(hud, "batteryFill", batteryFill);
             Wire(hud, "batteryGroup", batteryGroup);
 
+            BuildDayOverlay(root, font);
+
             return SavePrefab(root, path);
+        }
+
+        /// <summary>
+        /// The blackout between days and the two lines that end a run. Lives on the
+        /// same canvas, but above everything else so it covers the HUD.
+        /// </summary>
+        static void BuildDayOverlay(GameObject canvasRoot, Font font)
+        {
+            var blackout = MakeImage("Blackout", canvasRoot.transform, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            blackout.color = new Color(0f, 0f, 0f, 0f);
+            blackout.enabled = false;
+
+            var blackoutRect = blackout.rectTransform;
+            blackoutRect.anchorMin = Vector2.zero;
+            blackoutRect.anchorMax = Vector2.one;
+            blackoutRect.offsetMin = Vector2.zero;
+            blackoutRect.offsetMax = Vector2.zero;
+
+            var dayContainer = new GameObject("DayCard", typeof(RectTransform), typeof(CanvasGroup));
+            dayContainer.transform.SetParent(canvasRoot.transform, false);
+
+            var dayRect = dayContainer.GetComponent<RectTransform>();
+            dayRect.anchorMin = Vector2.zero;
+            dayRect.anchorMax = Vector2.one;
+            dayRect.offsetMin = Vector2.zero;
+            dayRect.offsetMax = Vector2.zero;
+
+            var dayGroup = dayContainer.GetComponent<CanvasGroup>();
+            dayGroup.alpha = 0f;
+            dayGroup.interactable = false;
+            dayGroup.blocksRaycasts = false;
+
+            var dayLabel = MakeLabel("DayLabel", dayContainer.transform, font, new Vector2(0.5f, 0.5f),
+                Vector2.zero, new Vector2(800f, 90f), TextAnchor.MiddleCenter, 64);
+
+            var verdict = MakeLabel("Verdict", canvasRoot.transform, font, new Vector2(0.5f, 0.5f),
+                new Vector2(0f, -90f), new Vector2(900f, 60f), TextAnchor.MiddleCenter, 36);
+
+            var overlay = canvasRoot.AddComponent<DayOverlay>();
+            Wire(overlay, "blackout", blackout);
+            Wire(overlay, "dayLabel", dayLabel);
+            Wire(overlay, "verdictLabel", verdict);
+            Wire(overlay, "dayGroup", dayGroup);
         }
 
         static Image MakeImage(string name, Transform parent, Vector2 anchor, Vector2 offset, Vector2 size)
