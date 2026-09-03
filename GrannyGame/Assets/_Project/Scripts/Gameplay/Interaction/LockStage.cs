@@ -89,6 +89,20 @@ namespace Granny.Gameplay.Interaction
             Cleared?.Invoke(this);
         }
 
+        /// <summary>
+        /// Marks the fastening already removed, without the work or the noise.
+        /// Used when resuming a saved run, where the player already paid for it.
+        /// </summary>
+        public void ForceClear()
+        {
+            if (IsCleared) return;
+
+            IsCleared = true;
+            workRemaining = 0f;
+            if (visual != null) visual.SetActive(false);
+            Cleared?.Invoke(this);
+        }
+
         /// <summary>Puts the fastening back — used when restarting a run.</summary>
         public void Restore()
         {

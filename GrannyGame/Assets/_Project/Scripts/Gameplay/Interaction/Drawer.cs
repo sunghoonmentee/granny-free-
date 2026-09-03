@@ -88,5 +88,16 @@ namespace Granny.Gameplay.Interaction
             contents = item;
             searched = false;
         }
+
+        /// <summary>
+        /// Marks the drawer already gone through, without spilling its contents.
+        /// Used when resuming a saved run: the player searched this yesterday, and
+        /// finding the same hammer in it twice would break the run.
+        /// </summary>
+        public void MarkSearched()
+        {
+            searched = true;
+            contents = null;
+        }
     }
 }

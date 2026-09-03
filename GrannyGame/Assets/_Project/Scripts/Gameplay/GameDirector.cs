@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Granny.Core;
 using Granny.Gameplay.AI;
 using Granny.Gameplay.Player;
@@ -39,6 +40,35 @@ namespace Granny.Gameplay
         public DayCycle Days => days;
         public DifficultyProfile Difficulty => difficulty;
 
+        /// <summary>The run's progress, ready to be written or restored.</summary>
+        public SaveData Snapshot()
+        {
+            var data = new SaveData
+            {
+                difficultyName = difficulty != null ? difficulty.DisplayName : "Normal",
+                day = days.Day,
+            };
+
+            var inventory = player != null ? player.GetComponentInChildren<PlayerInventory>() : null;
+            if (inventory != null)
+            {
+                data.heldItemId = inventory.Held != null ? inventory.Held.Id : string.Empty;
+
+                foreach (var item in inventory.Pockets)
+                    data.pocketItemIds.Add(item != null ? item.Id : string.Empty);
+            }
+
+            foreach (var stage in FindObjectsByType<Interaction.LockStage>(FindObjectsSortMode.None))
+                if (stage.IsCleared)
+                    data.clearedLockIds.Add(stage.name);
+
+            foreach (var container in FindObjectsByType<Interaction.Drawer>(FindObjectsSortMode.None))
+                if (container.HasBeenSearched)
+                    data.searchedContainerIds.Add(container.name);
+
+            return data;
+        }
+
         /// <summary>Raised while the screen should be black, with 0-1 darkness.</summary>
         public event Action<float> BlackoutChanged;
 
@@ -58,6 +88,33 @@ namespace Granny.Gameplay
 
             if (player == null) player = FindAnyObjectByType<PlayerMotor>();
             if (granny == null) granny = FindAnyObjectByType<GrannyBrain>();
+
+            Restore();
+        }
+
+        /// <summary>
+        /// Picks up an unfinished run. Only the day count and the progress made on
+        /// the door and the drawers come back — where everyone was standing does
+        /// not, so quitting mid-chase is not an escape route.
+        /// </summary>
+        void Restore()
+        {
+            var save = SaveSystem.Load();
+            if (save == null) return;
+
+            days.Restore(save.day);
+
+            var cleared = new HashSet<string>(save.clearedLockIds);
+            foreach (var stage in FindObjectsByType<Interaction.LockStage>(FindObjectsSortMode.None))
+                if (cleared.Contains(stage.name))
+                    stage.ForceClear();
+
+            var searched = new HashSet<string>(save.searchedContainerIds);
+            foreach (var container in FindObjectsByType<Interaction.Drawer>(FindObjectsSortMode.None))
+                if (searched.Contains(container.name))
+                    container.MarkSearched();
+
+            Debug.Log($"[GameDirector] resumed on day {save.day}");
         }
 
         void OnEnable()
@@ -101,7 +158,9 @@ namespace Granny.Gameplay
 
             if (wasFinal)
             {
-                // Nothing more to wake up for; the screen stays dark.
+                // Nothing more to wake up for; the screen stays dark, and there is
+                // no run left to continue.
+                SaveSystem.Delete();
                 resolvingCatch = false;
                 yield break;
             }
@@ -132,9 +191,20 @@ namespace Granny.Gameplay
 
             foreach (var trap in FindObjectsByType<BearTrap>(FindObjectsSortMode.None))
                 trap.Rearm();
+
+            // The run is written when a day begins and at no other time. Saving on
+            // demand would let a player undo every mistake, and the mistakes are
+            // what the five days are for.
+            SaveSystem.Save(Snapshot());
         }
 
         /// <summary>Called by the front door once every lock is off.</summary>
-        public void ReportEscape() => days.Escape();
+        public void ReportEscape()
+        {
+            days.Escape();
+
+            // A finished run should not offer to be continued.
+            SaveSystem.Delete();
+        }
     }
 }

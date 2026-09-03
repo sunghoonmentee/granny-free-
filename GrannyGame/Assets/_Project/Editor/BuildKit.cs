@@ -241,6 +241,75 @@ namespace Granny.EditorTools
             return go.transform;
         }
 
+        // ------------------------------------------------------------------
+        // Navigation
+        // ------------------------------------------------------------------
+
+        const string NavMeshAssetPath = "Assets/_Project/Settings/HouseNavMesh.asset";
+
+        /// <summary>
+        /// Bakes the surface and stores the result as its own asset.
+        ///
+        /// This matters more than it looks. A NavMeshData left living inside the
+        /// scene cannot be serialised as text, so Unity silently rewrites the
+        /// whole scene in binary - and .gitattributes declares *.unity as text,
+        /// so git then "normalises" line endings inside a binary file and corrupts
+        /// it. Keeping the bake in a separate asset keeps the scene diffable and
+        /// keeps git from eating it.
+        /// </summary>
+        public static void Bake(Unity.AI.Navigation.NavMeshSurface surface)
+        {
+            if (surface == null) return;
+
+            surface.BuildNavMesh();
+
+            var data = surface.navMeshData;
+            if (data == null)
+            {
+                Debug.LogError("[BuildKit] NavMesh bake produced nothing.");
+                return;
+            }
+
+            var existing = AssetDatabase.LoadAssetAtPath<UnityEngine.AI.NavMeshData>(NavMeshAssetPath);
+            if (existing != null) AssetDatabase.DeleteAsset(NavMeshAssetPath);
+
+            AssetDatabase.CreateAsset(data, NavMeshAssetPath);
+            AssetDatabase.SaveAssets();
+
+            surface.navMeshData = AssetDatabase.LoadAssetAtPath<UnityEngine.AI.NavMeshData>(NavMeshAssetPath);
+            EditorUtility.SetDirty(surface);
+        }
+
+        // ------------------------------------------------------------------
+        // Scenes
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Saves a scene, refusing to write one that is empty or failed to load.
+        ///
+        /// A builder that opens a scene, gets an error, and saves anyway will
+        /// happily overwrite the level with nothing — which is exactly how the
+        /// house was lost once already.
+        /// </summary>
+        public static bool SaveScene(UnityEngine.SceneManagement.Scene scene, string context)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                Debug.LogError($"[{context}] Scene is not loaded; refusing to save over it.");
+                return false;
+            }
+
+            if (scene.rootCount == 0)
+            {
+                Debug.LogError($"[{context}] Scene has no objects; refusing to save an empty scene.");
+                return false;
+            }
+
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+            UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
+            return true;
+        }
+
         /// <summary>Assigns a private [SerializeField] without widening its API.</summary>
         public static void Wire(Object target, string fieldName, Object value)
         {

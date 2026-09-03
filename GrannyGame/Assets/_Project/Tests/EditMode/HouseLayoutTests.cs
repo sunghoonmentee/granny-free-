@@ -27,6 +27,27 @@ namespace Granny.Tests
         static T Find<T>() where T : Object => Object.FindAnyObjectByType<T>();
 
         [Test]
+        public void TheSceneIsStoredAsText()
+        {
+            // A NavMeshData living inside the scene cannot be serialised as text,
+            // so Unity silently rewrites the whole scene as binary. .gitattributes
+            // marks *.unity as text, git then "normalises" line endings inside the
+            // binary payload, and the level is destroyed on the next checkout.
+            // It has happened once; this makes it impossible to happen quietly.
+            var full = System.IO.Path.Combine(
+                System.IO.Directory.GetParent(Application.dataPath)!.FullName, ScenePath);
+
+            var header = new byte[5];
+            using (var stream = System.IO.File.OpenRead(full))
+                _ = stream.Read(header, 0, header.Length);
+
+            Assert.AreEqual(
+                "%YAML", System.Text.Encoding.ASCII.GetString(header),
+                "House.unity is not text YAML. Check that the NavMesh bake is stored " +
+                "as its own asset rather than inside the scene.");
+        }
+
+        [Test]
         public void TheHouseExists()
         {
             var house = GameObject.Find("House");
