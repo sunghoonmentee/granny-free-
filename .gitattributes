@@ -27,6 +27,13 @@
 *.prefab  merge=unityyamlmerge
 *.asset   merge=unityyamlmerge
 
+# A baked NavMesh is binary even under Force Text serialization. Left under the
+# `text` rule above, git "normalises" CRLF inside the binary payload and quietly
+# destroys it - which is exactly how the house scene was lost once. Anything
+# holding a bake is declared binary explicitly.
+*NavMesh*.asset  -text -diff -merge
+NavMesh*.asset   -text -diff -merge
+
 # ---------------------------------------------------------------
 # Git LFS — binary assets only
 # ---------------------------------------------------------------

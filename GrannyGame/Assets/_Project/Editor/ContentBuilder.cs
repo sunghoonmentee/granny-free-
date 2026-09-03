@@ -35,6 +35,11 @@ namespace Granny.EditorTools
             EnsureFolders();
 
             BuildItems();
+
+            // Written to disk before the furniture and the level reference them,
+            // for the same reason GrannyBuilder flushes its difficulty profiles.
+            AssetDatabase.SaveAssets();
+
             BuildFurniture();
             var hud = BuildHud();
 
@@ -440,8 +445,7 @@ namespace Granny.EditorTools
                 typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule));
             UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(events, scene);
 
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            BuildKit.SaveScene(scene, "Content");
             Debug.Log("[Content] HUD installed");
         }
 

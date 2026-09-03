@@ -33,6 +33,13 @@ namespace Granny.EditorTools
         public static void Run()
         {
             var difficulties = BuildDifficulties();
+
+            // Flush before anything references these. A newly created asset that
+            // has not been written yet can be re-imported as a different instance
+            // mid-run, and the scene then serialises the reference to it as null -
+            // which is how GameDirector silently ended up with no difficulty.
+            AssetDatabase.SaveAssets();
+
             var normal = difficulties.Find(d => d.DisplayName == "Normal") ?? difficulties[0];
             var prefab = BuildPrefab(normal);
 
@@ -212,8 +219,7 @@ namespace Granny.EditorTools
             var player = Object.FindAnyObjectByType<PlayerMotor>();
             if (player != null) Wire(director, "player", player);
 
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            BuildKit.SaveScene(scene, "Granny");
             Debug.Log($"[Granny] placed with {patrolPoints.Count} patrol points");
         }
 

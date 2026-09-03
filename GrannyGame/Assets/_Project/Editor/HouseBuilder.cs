@@ -73,8 +73,7 @@ namespace Granny.EditorTools
             BakeNavigation();
             PlacePlayer();
 
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            BuildKit.SaveScene(scene, "House");
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -436,9 +435,7 @@ namespace Granny.EditorTools
             surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
             surface.layerMask = (1 << GameLayers.LevelGeometry) | (1 << GameLayers.Prop);
 
-            // The stairs sit at just under 40 degrees, so the agent has to accept
-            // a steeper climb than Unity's 45-degree default would suggest is safe.
-            surface.BuildNavMesh();
+            BuildKit.Bake(surface);
 
             Debug.Log("[House] NavMesh baked across four storeys");
         }

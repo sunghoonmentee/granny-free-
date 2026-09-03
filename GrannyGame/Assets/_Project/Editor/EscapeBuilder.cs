@@ -122,12 +122,11 @@ namespace Granny.EditorTools
             var surface = Object.FindAnyObjectByType<Unity.AI.Navigation.NavMeshSurface>();
             if (surface != null)
             {
-                surface.BuildNavMesh();
+                BuildKit.Bake(surface);
                 Debug.Log("[Escape] NavMesh rebaked around the new door");
             }
 
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            BuildKit.SaveScene(scene, "Escape");
             Debug.Log("[Escape] front door built with three fastenings");
             Debug.Log("[Escape] done");
         }
