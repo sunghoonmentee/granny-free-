@@ -41,12 +41,19 @@ namespace Granny.EditorTools
         // Stairwells. Each is a hole in the slab of the floor the flight arrives
         // at, and each flight spans its well exactly end to end - a flight that
         // stops short of the opening leaves a gap the player falls through.
-        static readonly Rect BasementWell = new(6.5f, 1.5f, 4.5f, 6f);
-        static readonly Rect UpperWell = new(-11f, 1.5f, 4.5f, 6f);
+        //
+        // Each well is exactly as wide as its flight, too. They used to be 4.5 m
+        // wide around a 2.6 m staircase, which left a metre of open pit down each
+        // side of every set of stairs.
+        const float MainStairWidth = 2.6f;
+        const float AtticStairWidth = 2.2f;
+
+        static readonly Rect BasementWell = new(7.45f, 1.5f, MainStairWidth, 6f);
+        static readonly Rect UpperWell = new(-10.05f, 1.5f, MainStairWidth, 6f);
 
         // Kept inside the attic's smaller footprint; a well hanging off the edge
         // would put the top of the flight outside the floor it arrives at.
-        static readonly Rect AtticWell = new(-7.5f, -6f, 4.5f, 6f);
+        static readonly Rect AtticWell = new(-6.35f, -6f, AtticStairWidth, 6f);
 
         [MenuItem("Granny/Build House", priority = 15)]
         public static void Run()
@@ -61,13 +68,18 @@ namespace Granny.EditorTools
             var palette = new Palette();
             var house = new GameObject("House").transform;
 
-            BuildBasement(house, palette);
-            BuildGround(house, palette);
-            BuildUpper(house, palette);
+            // Doors are hung in the openings the walls actually left, never at
+            // hand-written coordinates. That is what makes a door standing in the
+            // middle of a room - or turned across its own doorway - impossible.
+            var doorways = new List<BuildKit.Doorway>();
+
+            doorways.AddRange(BuildBasement(house, palette));
+            doorways.AddRange(BuildGround(house, palette));
+            doorways.AddRange(BuildUpper(house, palette));
             BuildAttic(house, palette);
             BuildStairs(house, palette);
 
-            var furniture = Furnish(house);
+            var furniture = Furnish(house, doorways);
             PlaceMarkers();
             BuildSpawner(furniture);
             BakeNavigation();
@@ -80,15 +92,21 @@ namespace Granny.EditorTools
             Debug.Log("[House] done");
         }
 
+        /// <summary>
+        /// Surfaces are much lighter than they were. Painting a dark house in dark
+        /// paint and then lighting it with two bulbs is how the first pass ended up
+        /// unreadable: the mood has to come from where the light falls, not from
+        /// albedo that swallows every photon that lands on it.
+        /// </summary>
         sealed class Palette
         {
-            public readonly Material Floor = BuildKit.Material("HouseFloor", new Color(0.17f, 0.14f, 0.11f));
-            public readonly Material Wall = BuildKit.Material("HouseWall", new Color(0.24f, 0.21f, 0.18f));
-            public readonly Material Interior = BuildKit.Material("HouseInterior", new Color(0.28f, 0.25f, 0.21f));
-            public readonly Material Concrete = BuildKit.Material("HouseConcrete", new Color(0.14f, 0.14f, 0.15f));
-            public readonly Material Ceiling = BuildKit.Material("HouseCeiling", new Color(0.09f, 0.08f, 0.07f));
-            public readonly Material Stair = BuildKit.Material("HouseStair", new Color(0.21f, 0.16f, 0.11f));
-            public readonly Material Tread = BuildKit.Material("HouseTread", new Color(0.33f, 0.27f, 0.19f));
+            public readonly Material Floor = BuildKit.Material("HouseFloor", new Color(0.34f, 0.29f, 0.24f));
+            public readonly Material Wall = BuildKit.Material("HouseWall", new Color(0.55f, 0.50f, 0.44f));
+            public readonly Material Interior = BuildKit.Material("HouseInterior", new Color(0.60f, 0.55f, 0.48f));
+            public readonly Material Concrete = BuildKit.Material("HouseConcrete", new Color(0.36f, 0.36f, 0.38f));
+            public readonly Material Ceiling = BuildKit.Material("HouseCeiling", new Color(0.30f, 0.28f, 0.26f));
+            public readonly Material Stair = BuildKit.Material("HouseStair", new Color(0.38f, 0.30f, 0.22f));
+            public readonly Material Tread = BuildKit.Material("HouseTread", new Color(0.52f, 0.43f, 0.31f));
         }
 
         // ------------------------------------------------------------------
@@ -100,7 +118,7 @@ namespace Granny.EditorTools
         /// It is the furthest point from the front door, which is exactly why a
         /// tool ends up down here.
         /// </summary>
-        static void BuildBasement(Transform parent, Palette palette)
+        static BuildKit.Doorway[] BuildBasement(Transform parent, Palette palette)
         {
             var floor = new GameObject("Basement").transform;
             floor.SetParent(parent, false);
@@ -109,14 +127,20 @@ namespace Granny.EditorTools
             Perimeter(floor, Footprint, BasementY, palette.Concrete);
 
             // Cellar divider, with one doorway near the south end.
-            BuildKit.Wall(floor, "Divider",
+            var doorways = BuildKit.Wall(floor, "Divider",
                 new Vector2(0f, Footprint.yMin), new Vector2(0f, Footprint.yMax),
                 BasementY, palette.Concrete, GameLayers.LevelGeometry, 4f);
 
             BuildKit.Bulb(floor, "CellarBulb", new Vector3(-6f, BasementY + 2.7f, -4f),
-                new Color(1f, 0.78f, 0.5f), 1.6f, 7f);
+                new Color(1f, 0.80f, 0.55f), 3.2f, 13f);
+            BuildKit.Bulb(floor, "CellarBulbN", new Vector3(-6f, BasementY + 2.7f, 5f),
+                new Color(1f, 0.80f, 0.55f), 2.6f, 12f);
             BuildKit.Bulb(floor, "BoilerBulb", new Vector3(6f, BasementY + 2.7f, -5f),
-                new Color(0.9f, 0.6f, 0.45f), 1.1f, 6f);
+                new Color(0.95f, 0.65f, 0.5f), 2.8f, 12f);
+            BuildKit.Bulb(floor, "StairBulb", new Vector3(BasementWell.center.x, BasementY + 2.7f, 4f),
+                new Color(1f, 0.85f, 0.6f), 2.4f, 10f);
+
+            return doorways;
         }
 
         /// <summary>
@@ -124,13 +148,18 @@ namespace Granny.EditorTools
         /// south-east. The front door is visible from the hall, so the player can
         /// always see how far they are from the thing they are working towards.
         /// </summary>
-        static void BuildGround(Transform parent, Palette palette)
+        static BuildKit.Doorway[] BuildGround(Transform parent, Palette palette)
         {
             var floor = new GameObject("Ground").transform;
             floor.SetParent(parent, false);
 
             BuildKit.Slab(floor, "Slab", Footprint, GroundY, palette.Floor,
                 GameLayers.LevelGeometry, BasementWell);
+
+            // The flight from the cellar arrives at the north end of this hole, so
+            // the other three sides get a rail rather than a drop.
+            BuildKit.Railing(floor, "StairRail", BasementWell, GroundY,
+                palette.Stair, GameLayers.LevelGeometry);
 
             // The north wall carries the front door, so its opening is left for
             // EscapeBuilder rather than being filled in here.
@@ -151,28 +180,35 @@ namespace Granny.EditorTools
                 GroundY, palette.Wall, GameLayers.LevelGeometry);
 
             // Hall / living room divider.
-            BuildKit.Wall(floor, "Wall_Hall",
+            var hallDoors = BuildKit.Wall(floor, "Wall_Hall",
                 new Vector2(-4f, Footprint.yMin), new Vector2(-4f, 4f),
                 GroundY, palette.Interior, GameLayers.LevelGeometry, 3f, 11f);
 
             // Kitchen divider.
-            BuildKit.Wall(floor, "Wall_Kitchen",
+            var kitchenDoors = BuildKit.Wall(floor, "Wall_Kitchen",
                 new Vector2(-4f, -2f), new Vector2(Footprint.xMax, -2f),
                 GroundY, palette.Interior, GameLayers.LevelGeometry, 5f, 13f);
 
             BuildKit.Bulb(floor, "HallBulb", new Vector3(2f, GroundY + 2.8f, 6f),
-                new Color(1f, 0.85f, 0.6f), 2.2f, 9f);
-            BuildKit.Bulb(floor, "LivingBulb", new Vector3(-8f, GroundY + 2.8f, -4f),
-                new Color(1f, 0.8f, 0.55f), 1.7f, 8f);
+                new Color(1f, 0.86f, 0.62f), 3.6f, 14f);
+            BuildKit.Bulb(floor, "LivingBulbN", new Vector3(-8f, GroundY + 2.8f, 4f),
+                new Color(1f, 0.82f, 0.58f), 3.0f, 13f);
+            BuildKit.Bulb(floor, "LivingBulbS", new Vector3(-8f, GroundY + 2.8f, -6f),
+                new Color(1f, 0.82f, 0.58f), 3.0f, 13f);
             BuildKit.Bulb(floor, "KitchenBulb", new Vector3(6f, GroundY + 2.8f, -6f),
-                new Color(0.95f, 0.92f, 0.8f), 1.5f, 7f);
+                new Color(0.96f, 0.93f, 0.82f), 3.0f, 13f);
+
+            var doorways = new List<BuildKit.Doorway>();
+            doorways.AddRange(hallDoors);
+            doorways.AddRange(kitchenDoors);
+            return doorways.ToArray();
         }
 
         /// <summary>
         /// First floor: three bedrooms and a landing. The player wakes up in the
         /// south-east bedroom, the furthest room from the front door.
         /// </summary>
-        static void BuildUpper(Transform parent, Palette palette)
+        static BuildKit.Doorway[] BuildUpper(Transform parent, Palette palette)
         {
             var floor = new GameObject("Upper").transform;
             floor.SetParent(parent, false);
@@ -180,21 +216,36 @@ namespace Granny.EditorTools
             BuildKit.Slab(floor, "Slab", Footprint, UpperY, palette.Floor,
                 GameLayers.LevelGeometry, UpperWell);
 
+            BuildKit.Railing(floor, "StairRail", UpperWell, UpperY,
+                palette.Stair, GameLayers.LevelGeometry);
+
             Perimeter(floor, Footprint, UpperY, palette.Wall);
 
-            // Landing runs east-west; bedrooms hang off it.
-            BuildKit.Wall(floor, "Wall_Landing",
+            // Landing runs east-west, with one door into each bedroom. There used
+            // to be a third opening in the middle, at x = 1 - which is exactly
+            // where the wall dividing the two bedrooms meets this one, so the
+            // doorway was filled by the end of another wall.
+            var landingDoors = BuildKit.Wall(floor, "Wall_Landing",
                 new Vector2(Footprint.xMin, 1f), new Vector2(Footprint.xMax, 1f),
-                UpperY, palette.Interior, GameLayers.LevelGeometry, 5f, 13f, 20f);
+                UpperY, palette.Interior, GameLayers.LevelGeometry, 5f, 20f);
 
-            BuildKit.Wall(floor, "Wall_Bedrooms",
+            var bedroomDoors = BuildKit.Wall(floor, "Wall_Bedrooms",
                 new Vector2(1f, Footprint.yMin), new Vector2(1f, 1f),
                 UpperY, palette.Interior, GameLayers.LevelGeometry, 7f);
 
             BuildKit.Bulb(floor, "LandingBulb", new Vector3(-2f, UpperY + 2.8f, 5f),
-                new Color(1f, 0.82f, 0.58f), 1.8f, 9f);
+                new Color(1f, 0.83f, 0.6f), 3.4f, 14f);
+            BuildKit.Bulb(floor, "LandingBulbE", new Vector3(7f, UpperY + 2.8f, 5f),
+                new Color(1f, 0.83f, 0.6f), 2.8f, 12f);
             BuildKit.Bulb(floor, "BedroomBulb", new Vector3(6f, UpperY + 2.8f, -6f),
-                new Color(0.95f, 0.78f, 0.6f), 1.4f, 7f);
+                new Color(0.96f, 0.80f, 0.62f), 2.8f, 12f);
+            BuildKit.Bulb(floor, "BedroomBulbW", new Vector3(-6f, UpperY + 2.8f, -6f),
+                new Color(0.96f, 0.80f, 0.62f), 2.8f, 12f);
+
+            var doorways = new List<BuildKit.Doorway>();
+            doorways.AddRange(landingDoors);
+            doorways.AddRange(bedroomDoors);
+            return doorways.ToArray();
         }
 
         /// <summary>
@@ -209,13 +260,18 @@ namespace Granny.EditorTools
             BuildKit.Slab(floor, "Slab", AtticFootprint, AtticY, palette.Floor,
                 GameLayers.LevelGeometry, AtticWell);
 
+            BuildKit.Railing(floor, "StairRail", AtticWell, AtticY,
+                palette.Stair, GameLayers.LevelGeometry);
+
             Perimeter(floor, AtticFootprint, AtticY, palette.Wall);
 
             BuildKit.Slab(floor, "Roof", AtticFootprint, AtticY + BuildKit.FloorHeight,
                 palette.Ceiling, GameLayers.LevelGeometry);
 
             BuildKit.Bulb(floor, "AtticBulb", new Vector3(0f, AtticY + 2.6f, 0f),
-                new Color(0.85f, 0.7f, 0.5f), 1.2f, 8f);
+                new Color(0.88f, 0.72f, 0.52f), 3.0f, 14f);
+            BuildKit.Bulb(floor, "AtticBulbS", new Vector3(0f, AtticY + 2.6f, -4f),
+                new Color(0.88f, 0.72f, 0.52f), 2.2f, 10f);
         }
 
         static void Perimeter(Transform parent, Rect area, float floorY, Material material)
@@ -251,19 +307,19 @@ namespace Granny.EditorTools
             // Ground down to basement, inside the east stairwell.
             BuildKit.Stair(stairs, "Stair_Basement",
                 new Vector3(BasementWell.center.x, BasementY, BasementWell.yMin),
-                Vector3.forward, BuildKit.FloorHeight, BasementWell.height, 2.6f,
+                Vector3.forward, BuildKit.FloorHeight, BasementWell.height, MainStairWidth,
                 palette.Stair, palette.Tread, GameLayers.LevelGeometry);
 
             // Ground up to the first floor, in the west stairwell.
             BuildKit.Stair(stairs, "Stair_Upper",
                 new Vector3(UpperWell.center.x, GroundY, UpperWell.yMin),
-                Vector3.forward, BuildKit.FloorHeight, UpperWell.height, 2.6f,
+                Vector3.forward, BuildKit.FloorHeight, UpperWell.height, MainStairWidth,
                 palette.Stair, palette.Tread, GameLayers.LevelGeometry);
 
             // First floor up to the attic, through the south-west bedroom.
             BuildKit.Stair(stairs, "Stair_Attic",
                 new Vector3(AtticWell.center.x, UpperY, AtticWell.yMin),
-                Vector3.forward, BuildKit.FloorHeight, AtticWell.height, 2.2f,
+                Vector3.forward, BuildKit.FloorHeight, AtticWell.height, AtticStairWidth,
                 palette.Stair, palette.Tread, GameLayers.LevelGeometry);
         }
 
@@ -288,30 +344,25 @@ namespace Granny.EditorTools
         /// three required tools, half the drawers in the house are empty, so
         /// searching costs something even when it works.
         /// </summary>
+        // Furniture stands against walls now, with its back to the plaster. The
+        // first pass left it floating a metre or two into rooms, and one wardrobe
+        // sat squarely on the foot of the stairs to the first floor - which is
+        // both the "map looks wrong" and part of the "I keep bumping into things".
         static readonly Placement[] Dressers =
         {
-            new(-10f, BasementY, -6f, 90f),
-            new(9f, BasementY, -7f, -90f),
-            new(-10f, GroundY, -7f, 90f),
-            new(9f, GroundY, -7f, -90f),
-            new(-9f, UpperY, -7f, 90f),
-            new(0f, AtticY, 4f, 180f),
+            new(-11.55f, BasementY, -6f, 90f),
+            new(11.55f, BasementY, -7f, -90f),
+            new(-11.55f, GroundY, -7f, 90f),
+            new(11.55f, GroundY, -7f, -90f),
+            new(-11.55f, UpperY, -7f, 90f),
+            new(0f, AtticY, 6.6f, 180f),
         };
 
         static readonly Placement[] Wardrobes =
         {
-            new(-9f, GroundY, 2f, 90f),
-            new(9f, UpperY, -3f, -90f),
-            new(6f, AtticY, -4f, 180f),
-        };
-
-        /// <summary>Interior doors, at the openings cut into the walls above.</summary>
-        static readonly Placement[] Doors =
-        {
-            new(-4f, GroundY, -7f, 0f),
-            new(1f, GroundY, -2f, 90f),
-            new(-4f, UpperY, -3f, 0f),
-            new(1f, UpperY, -3f, 0f),
+            new(-11.42f, GroundY, -4f, 90f),
+            new(11.42f, UpperY, -3f, -90f),
+            new(5.5f, AtticY, 6.42f, 180f),
         };
 
         sealed class Furniture
@@ -319,7 +370,7 @@ namespace Granny.EditorTools
             public readonly List<Drawer> Drawers = new();
         }
 
-        static Furniture Furnish(Transform parent)
+        static Furniture Furnish(Transform parent, List<BuildKit.Doorway> doorways)
         {
             var furniture = new Furniture();
 
@@ -342,8 +393,18 @@ namespace Granny.EditorTools
             });
 
             Place(wardrobePrefab, Wardrobes, root);
-            Place(doorPrefab, Doors, root);
 
+            // Every opening the walls left gets a door, hung in the opening and
+            // turned to match the wall it belongs to.
+            for (var i = 0; i < doorways.Count; i++)
+            {
+                var door = (GameObject)PrefabUtility.InstantiatePrefab(doorPrefab, root);
+                door.name = $"Door_{i}";
+                door.transform.SetPositionAndRotation(
+                    doorways[i].Centre, Quaternion.Euler(0f, doorways[i].Yaw, 0f));
+            }
+
+            Debug.Log($"[House] {doorways.Count} interior doors hung in their own doorways");
             return furniture;
         }
 
@@ -375,7 +436,7 @@ namespace Granny.EditorTools
             new(6f, GroundY, 6f),
             new(-8f, GroundY, -6f),
             new(6f, GroundY, -6f),
-            new(-8f, UpperY, 5f),
+            new(-5f, UpperY, 5f),
             new(6f, UpperY, -6f),
             new(-6f, BasementY, -5f),
             new(6f, BasementY, -5f),
@@ -426,8 +487,48 @@ namespace Granny.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        /// <summary>
+        /// The bake uses the project's agent type, not the NavMeshAgent component,
+        /// so this is the only place the agent's size can be set.
+        ///
+        /// The default humanoid is 0.5 m across, and the walkable surface is eroded
+        /// by that on both sides of every wall. A 1.5 m doorway came out as 0.5 m
+        /// of path, and a 1.3 m one as 0.3 m — narrow enough for the voxeliser to
+        /// close it altogether, which left whole rooms unreachable and is a large
+        /// part of why she never came upstairs.
+        /// </summary>
+        static void EnsureAgentSettings()
+        {
+            var assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/NavMeshAreas.asset");
+            if (assets.Length == 0)
+            {
+                Debug.LogWarning("[House] NavMeshAreas.asset not found; agent size left at defaults.");
+                return;
+            }
+
+            var settings = new SerializedObject(assets[0]);
+            var list = settings.FindProperty("m_Settings");
+
+            if (list == null || list.arraySize == 0)
+            {
+                Debug.LogWarning("[House] No NavMesh agent types found; agent size left at defaults.");
+                return;
+            }
+
+            var humanoid = list.GetArrayElementAtIndex(0);
+            humanoid.FindPropertyRelative("agentRadius").floatValue = 0.3f;
+            humanoid.FindPropertyRelative("agentHeight").floatValue = 1.9f;
+            humanoid.FindPropertyRelative("agentClimb").floatValue = 0.4f;
+            humanoid.FindPropertyRelative("agentSlope").floatValue = 45f;
+            settings.ApplyModifiedPropertiesWithoutUndo();
+
+            Debug.Log("[House] NavMesh agent: radius 0.3, height 1.9");
+        }
+
         static void BakeNavigation()
         {
+            EnsureAgentSettings();
+
             var navigation = new GameObject("Navigation");
             var surface = navigation.AddComponent<NavMeshSurface>();
 

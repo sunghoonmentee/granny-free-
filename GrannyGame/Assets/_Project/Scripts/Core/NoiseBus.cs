@@ -3,62 +3,135 @@ using UnityEngine;
 
 namespace Granny.Core
 {
-    /// <summary>What kind of sound was made. Used for tuning and for debug display.</summary>
+    /// <summary>
+    /// What made the sound. Kinds are actions, not loudness levels: whether a kind
+    /// is heard at all is decided once, in <see cref="NoiseRules"/>.
+    /// </summary>
     public enum NoiseKind
     {
+        /// <summary>Walking, running, crouching. Never heard — the original rule.</summary>
         Footstep,
-        Door,
-        Impact,
+
+        /// <summary>A door eased open or shut.</summary>
+        DoorMove,
+
+        /// <summary>A door thrown open or slammed.</summary>
+        DoorSlam,
+
+        /// <summary>A dropped or thrown item landing hard.</summary>
+        ItemImpact,
+
+        /// <summary>Glass, a jar, a vase — anything that shatters.</summary>
         Breakage,
-        Voice,
-        Machine,
+
+        /// <summary>Hammering, prying, a lock clattering to the floor.</summary>
+        ToolWork,
+
+        /// <summary>A bear trap snapping shut.</summary>
+        Trap,
+
+        /// <summary>A drawer or cabinet sliding.</summary>
+        Container,
+
+        /// <summary>Climbing into or out of a wardrobe or under a bed.</summary>
+        Hiding,
+
+        /// <summary>Trying a locked door.</summary>
+        LockedRattle,
     }
 
-    /// <summary>One thing that was heard, somewhere in the house.</summary>
+    /// <summary>One sound, somewhere in the house.</summary>
     public readonly struct Noise
     {
         public readonly Vector3 Position;
 
-        /// <summary>Metres at which this is still audible, before any obstruction.</summary>
-        public readonly float Radius;
+        /// <summary>Floor index from <see cref="HouseLayout.FloorOf(Vector3)"/>.</summary>
+        public readonly int Floor;
 
         public readonly NoiseKind Kind;
 
         /// <summary>The object that made it, so a listener can ignore its own noise.</summary>
         public readonly GameObject Source;
 
-        public Noise(Vector3 position, float radius, NoiseKind kind, GameObject source = null)
+        /// <summary>Time.time when it was made.</summary>
+        public readonly float Time;
+
+        public Noise(Vector3 position, NoiseKind kind, GameObject source = null)
         {
             Position = position;
-            Radius = Mathf.Max(0f, radius);
+            Floor = HouseLayout.FloorOf(position);
             Kind = kind;
             Source = source;
+            Time = UnityEngine.Time.time;
         }
 
-        public bool Reaches(Vector3 listener) =>
-            (listener - Position).sqrMagnitude <= Radius * Radius;
+        public override string ToString() =>
+            $"{Kind} @ {HouseLayout.FloorName(Floor)} ({Position.x:F1}, {Position.y:F1}, {Position.z:F1})";
     }
 
     /// <summary>
-    /// A dropped bottle and a slammed door have nothing to do with each other, and
-    /// neither should know that Granny exists. Everything that makes a sound
-    /// publishes here; everything that listens subscribes here.
+    /// Which sounds she hears. This is the one table to change to retune it.
     ///
-    /// Static because there is exactly one house and one set of ears. The scene
-    /// hook below clears subscribers between play sessions so a stale listener
-    /// from a previous run cannot keep receiving.
+    /// The rule from the original: she hears the house, not the player. Moving —
+    /// at any speed — makes no sound she reacts to; doing something does. And an
+    /// action she hears, she hears from anywhere in the house, on any floor.
+    /// </summary>
+    public static class NoiseRules
+    {
+        /// <summary>
+        /// Easing a door open is silent in the original, and in the design doc.
+        /// Slamming one is not. Flip this to make ordinary door use audible.
+        /// </summary>
+        public const bool DoorMovementAudible = false;
+
+        public static bool IsAudible(NoiseKind kind) => kind switch
+        {
+            NoiseKind.DoorSlam => true,
+            NoiseKind.ItemImpact => true,
+            NoiseKind.Breakage => true,
+            NoiseKind.ToolWork => true,
+            NoiseKind.Trap => true,
+            NoiseKind.DoorMove => DoorMovementAudible,
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// The house's one channel for sound. Everything that makes a noise publishes
+    /// here; everything that listens subscribes here. Nothing on either side knows
+    /// about the other.
+    ///
+    /// Filtering happens at the bus, not at the listener, so a sound that should
+    /// never be heard cannot leak into a new listener that forgets to check.
     /// </summary>
     public static class NoiseBus
     {
-        /// <summary>Raised for every noise made anywhere, regardless of distance.</summary>
+        /// <summary>Raised for every audible noise, wherever it happened.</summary>
         public static event Action<Noise> Heard;
 
-        public static void Emit(Noise noise) => Heard?.Invoke(noise);
+        /// <summary>Raised for noises dropped by <see cref="NoiseRules"/>. For debugging and tests.</summary>
+        public static event Action<Noise> Filtered;
 
-        public static void Emit(Vector3 position, float radius, NoiseKind kind, GameObject source = null) =>
-            Emit(new Noise(position, radius, kind, source));
+        /// <summary>Broadcasts a noise. Returns whether it was audible.</summary>
+        public static bool Emit(Vector3 position, NoiseKind kind, GameObject source = null)
+        {
+            var noise = new Noise(position, kind, source);
+
+            if (!NoiseRules.IsAudible(kind))
+            {
+                Filtered?.Invoke(noise);
+                return false;
+            }
+
+            Heard?.Invoke(noise);
+            return true;
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetOnLoad() => Heard = null;
+        static void ResetOnLoad()
+        {
+            Heard = null;
+            Filtered = null;
+        }
     }
 }

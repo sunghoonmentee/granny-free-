@@ -51,12 +51,7 @@ namespace Granny.Gameplay
 
             var inventory = player != null ? player.GetComponentInChildren<PlayerInventory>() : null;
             if (inventory != null)
-            {
                 data.heldItemId = inventory.Held != null ? inventory.Held.Id : string.Empty;
-
-                foreach (var item in inventory.Pockets)
-                    data.pocketItemIds.Add(item != null ? item.Id : string.Empty);
-            }
 
             foreach (var stage in FindObjectsByType<Interaction.LockStage>(FindObjectsSortMode.None))
                 if (stage.IsCleared)

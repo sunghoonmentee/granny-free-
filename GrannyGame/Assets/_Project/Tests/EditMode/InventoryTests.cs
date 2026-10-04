@@ -6,22 +6,22 @@ using UnityEngine;
 namespace Granny.Tests
 {
     /// <summary>
-    /// The hand/belt split is what makes tool trips costly, so these pin the rules
-    /// that decide where an item lands and what it displaces.
+    /// One hand, one item. This is the rule that makes the house a logistics
+    /// problem, so these pin it: nothing accumulates, and taking something always
+    /// costs whatever was already being carried.
     /// </summary>
     public class InventoryTests
     {
         GameObject host;
         PlayerInventory inventory;
 
-        static ItemDefinition MakeItem(string id, ItemCarry carry, params string[] tags)
+        static ItemDefinition MakeItem(string id, params string[] tags)
         {
             var item = ScriptableObject.CreateInstance<ItemDefinition>();
             var so = new UnityEditor.SerializedObject(item);
 
             so.FindProperty("id").stringValue = id;
             so.FindProperty("displayName").stringValue = id;
-            so.FindProperty("carry").enumValueIndex = (int)carry;
 
             var tagProp = so.FindProperty("tags");
             tagProp.arraySize = tags.Length;
@@ -43,103 +43,81 @@ namespace Granny.Tests
         public void TearDown() => Object.DestroyImmediate(host);
 
         [Test]
-        public void HeldItemGoesToTheHand()
+        public void TakingAnItemPutsItInTheHand()
         {
-            var hammer = MakeItem("hammer", ItemCarry.Held, "pry");
+            var hammer = MakeItem("hammer", "pry");
 
             Assert.IsTrue(inventory.TryTake(hammer));
             Assert.AreSame(hammer, inventory.Held);
+            Assert.IsFalse(inventory.IsEmptyHanded);
         }
 
         [Test]
-        public void PocketedItemGoesToTheFirstFreeSlot()
+        public void StartsEmptyHanded()
         {
-            var key = MakeItem("key", ItemCarry.Pocketed, "unlock");
-
-            Assert.IsTrue(inventory.TryTake(key));
-            Assert.IsNull(inventory.Held, "A pocketed item must not occupy the hands.");
-            Assert.AreSame(key, inventory.Pockets[0]);
+            Assert.IsNull(inventory.Held);
+            Assert.IsTrue(inventory.IsEmptyHanded);
         }
 
         [Test]
-        public void PocketsFillUpAndThenRefuse()
+        public void ASecondItemReplacesTheFirst()
         {
-            for (var i = 0; i < inventory.PocketCapacity; i++)
-                Assert.IsTrue(inventory.TryTake(MakeItem($"small{i}", ItemCarry.Pocketed)));
-
-            Assert.IsFalse(
-                inventory.TryTake(MakeItem("overflow", ItemCarry.Pocketed)),
-                "A full belt must refuse rather than silently discard.");
-        }
-
-        [Test]
-        public void TakingASecondToolReplacesTheFirst()
-        {
-            var hammer = MakeItem("hammer", ItemCarry.Held, "pry");
-            var cutters = MakeItem("cutters", ItemCarry.Held, "cut");
+            var hammer = MakeItem("hammer", "pry");
+            var cutters = MakeItem("cutters", "cut");
 
             inventory.TryTake(hammer);
             inventory.TryTake(cutters);
 
-            Assert.AreSame(cutters, inventory.Held, "Carrying two tools at once would remove the cost of choosing.");
+            Assert.AreSame(cutters, inventory.Held,
+                "Carrying two things at once would remove the cost of choosing.");
         }
 
         [Test]
-        public void EquipSlotMovesAPocketedItemIntoTheHand()
+        public void EvenAKeyTakesTheHand()
         {
-            var key = MakeItem("key", ItemCarry.Pocketed, "unlock");
+            // Keys used to go on a belt. They do not any more: fetching the key
+            // means putting the hammer down, same as everything else.
+            var hammer = MakeItem("hammer", "pry");
+            var key = MakeItem("key.front", "key.front");
+
+            inventory.TryTake(hammer);
             inventory.TryTake(key);
 
-            inventory.EquipSlot(1);
-
             Assert.AreSame(key, inventory.Held);
-            Assert.IsNull(inventory.Pockets[0]);
         }
 
         [Test]
-        public void EquippingWhileHoldingAPocketedItemSwapsThem()
+        public void DroppingEmptiesTheHand()
         {
-            var key = MakeItem("key", ItemCarry.Pocketed, "unlock");
-            var battery = MakeItem("battery", ItemCarry.Pocketed, "power");
+            inventory.TryTake(MakeItem("hammer"));
 
-            inventory.TryTake(key);       // slot 0
-            inventory.TryTake(battery);   // slot 1
-            inventory.EquipSlot(1);       // key to hand
+            inventory.DropHeld();
 
-            inventory.EquipSlot(2);       // battery to hand, key back to slot 1
-
-            Assert.AreSame(battery, inventory.Held);
-            Assert.AreSame(key, inventory.Pockets[1]);
+            Assert.IsNull(inventory.Held);
         }
 
         [Test]
-        public void EquippingAnEmptySlotDoesNothing()
+        public void ThrowingEmptiesTheHand()
         {
-            var hammer = MakeItem("hammer", ItemCarry.Held);
-            inventory.TryTake(hammer);
+            inventory.TryTake(MakeItem("bottle"));
 
-            inventory.EquipSlot(3);
+            inventory.ThrowHeld();
 
-            Assert.AreSame(hammer, inventory.Held);
+            Assert.IsNull(inventory.Held);
         }
 
         [Test]
-        public void FindByTagPrefersTheItemInHand()
+        public void DroppingWithEmptyHandsIsHarmless()
         {
-            var pocketKey = MakeItem("spare", ItemCarry.Pocketed, "unlock");
-            var handKey = MakeItem("master", ItemCarry.Held, "unlock");
-
-            inventory.TryTake(pocketKey);
-            inventory.TryTake(handKey);
-
-            Assert.AreSame(handKey, inventory.FindByTag("unlock"));
+            Assert.DoesNotThrow(() => inventory.DropHeld());
+            Assert.DoesNotThrow(() => inventory.ThrowHeld());
+            Assert.DoesNotThrow(() => inventory.DropHeldAt(Vector3.zero));
         }
 
         [Test]
         public void TagMatchingIsCaseInsensitiveAndMissesAreNull()
         {
-            var key = MakeItem("key", ItemCarry.Pocketed, "Key.Front");
-            inventory.TryTake(key);
+            inventory.TryTake(MakeItem("key", "Key.Front"));
 
             Assert.IsTrue(inventory.HasTag("key.front"));
             Assert.IsFalse(inventory.HasTag("cut"));
@@ -147,21 +125,26 @@ namespace Granny.Tests
         }
 
         [Test]
-        public void ConsumeRemovesFromHandOrBeltAndRefusesUncarriedItems()
+        public void ATagOnlyMatchesWhatIsActuallyInHand()
         {
-            var held = MakeItem("hammer", ItemCarry.Held);
-            var pocketed = MakeItem("key", ItemCarry.Pocketed);
-            var stranger = MakeItem("stranger", ItemCarry.Pocketed);
+            var key = MakeItem("key", "unlock");
+            inventory.TryTake(key);
+            inventory.TryTake(MakeItem("hammer", "pry"));
+
+            Assert.IsFalse(inventory.HasTag("unlock"),
+                "The key was put down to pick up the hammer; it cannot still open anything.");
+        }
+
+        [Test]
+        public void ConsumeRemovesFromTheHandAndRefusesUncarriedItems()
+        {
+            var held = MakeItem("hammer");
+            var stranger = MakeItem("stranger");
 
             inventory.TryTake(held);
-            inventory.TryTake(pocketed);
 
             Assert.IsTrue(inventory.Consume(held));
             Assert.IsNull(inventory.Held);
-
-            Assert.IsTrue(inventory.Consume(pocketed));
-            Assert.IsNull(inventory.Pockets[0]);
-
             Assert.IsFalse(inventory.Consume(stranger), "Consuming something never carried must fail.");
         }
 
@@ -171,8 +154,8 @@ namespace Granny.Tests
             var fired = 0;
             inventory.Changed += () => fired++;
 
-            inventory.TryTake(MakeItem("key", ItemCarry.Pocketed));
-            inventory.EquipSlot(1);
+            inventory.TryTake(MakeItem("key"));
+            inventory.DropHeld();
 
             Assert.AreEqual(2, fired);
         }

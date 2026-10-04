@@ -309,7 +309,6 @@ MonoBehaviour:
   slideSpeed: 1.4
   contents: {fileID: 0}
   contentsAnchor: {fileID: 1126154835060268457}
-  noiseRadius: 5.5
 --- !u!1 &6968193617830690163
 GameObject:
   m_ObjectHideFlags: 0

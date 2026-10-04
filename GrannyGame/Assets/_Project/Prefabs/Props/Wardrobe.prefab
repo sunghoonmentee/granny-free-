@@ -306,7 +306,6 @@ MonoBehaviour:
   viewpoint: {fileID: 3134739696241586264}
   exitPoint: {fileID: 6639957592759659756}
   door: {fileID: 0}
-  enterNoiseRadius: 5
 --- !u!1 &6402045829892308888
 GameObject:
   m_ObjectHideFlags: 0

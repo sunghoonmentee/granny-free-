@@ -15,18 +15,19 @@ namespace Granny.Core
     public sealed class SaveData
     {
         /// <summary>Bumped when the shape below changes so old files can be rejected.</summary>
-        public const int CurrentVersion = 1;
+        /// <summary>
+        /// 2: the belt was removed, so pocketed item ids no longer exist. A file
+        /// from version 1 would restore a run with items that have nowhere to go.
+        /// </summary>
+        public const int CurrentVersion = 2;
 
         public int version = CurrentVersion;
 
         public string difficultyName = "Normal";
         public int day = 1;
 
-        /// <summary>Item id in the player's hands, or empty.</summary>
+        /// <summary>Item id in the player's one hand, or empty.</summary>
         public string heldItemId = string.Empty;
-
-        /// <summary>Item ids on the belt, in slot order. Empty strings are empty slots.</summary>
-        public List<string> pocketItemIds = new();
 
         /// <summary>Ids of the door fastenings already removed.</summary>
         public List<string> clearedLockIds = new();

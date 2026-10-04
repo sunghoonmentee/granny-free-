@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 3464153410823985746}
   - component: {fileID: 1536705790429394166}
   - component: {fileID: 7189718378476063077}
+  - component: {fileID: 7115235665565675463}
   m_Layer: 11
   m_Name: bottle
   m_TagString: Untagged
@@ -154,5 +155,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Interaction.PickupItem
   definition: {fileID: 11400000, guid: 413cbb5f5e30c5d4dae85ccc9183a5a2, type: 2}
-  impactNoiseRadius: 7
   quietImpactSpeed: 2.2
+--- !u!114 &7115235665565675463
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6155935281319479546}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f6ba111ece20054f9e3e80d4473d689, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Interaction.BreakableItem
+  breakSpeed: 3
+  contents: {fileID: 0}

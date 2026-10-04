@@ -77,14 +77,13 @@ namespace Granny.Tests
 #endif
         }
 
-        static ItemDefinition MakeItem(string id, ItemCarry carry, params string[] tags)
+        static ItemDefinition MakeItem(string id, params string[] tags)
         {
             var item = ScriptableObject.CreateInstance<ItemDefinition>();
 #if UNITY_EDITOR
             var so = new UnityEditor.SerializedObject(item);
             so.FindProperty("id").stringValue = id;
             so.FindProperty("displayName").stringValue = id;
-            so.FindProperty("carry").enumValueIndex = (int)carry;
 
             var tagProp = so.FindProperty("tags");
             tagProp.arraySize = tags.Length;
@@ -119,7 +118,7 @@ namespace Granny.Tests
         [UnityTest]
         public IEnumerator LookingAtAPickupOffersATakePrompt()
         {
-            var item = MakeItem("hammer", ItemCarry.Held, "pry");
+            var item = MakeItem("hammer", "pry");
             PlacePickup(item);
 
             yield return null;
@@ -138,7 +137,7 @@ namespace Granny.Tests
         [UnityTest]
         public IEnumerator InteractingWithAPickupMovesItIntoTheInventory()
         {
-            var item = MakeItem("hammer", ItemCarry.Held, "pry");
+            var item = MakeItem("hammer", "pry");
             var pickup = PlacePickup(item);
 
             yield return null;
@@ -152,7 +151,7 @@ namespace Granny.Tests
         [UnityTest]
         public IEnumerator TurningAwayDropsTheTarget()
         {
-            PlacePickup(MakeItem("hammer", ItemCarry.Held));
+            PlacePickup(MakeItem("hammer"));
             yield return null;
             Assert.IsNotNull(interactor.Target);
 
@@ -163,7 +162,7 @@ namespace Granny.Tests
         }
 
         [UnityTest]
-        public IEnumerator ADoorOpensClosesAndAnnouncesItself()
+        public IEnumerator ADoorOpensAndClosesWithoutGivingThePlayerAway()
         {
             var doorGo = new GameObject("Door");
             doorGo.transform.SetParent(sceneRoot.transform);
@@ -176,9 +175,13 @@ namespace Granny.Tests
             var door = doorGo.AddComponent<HingeDoor>();
             Wire(door, "leaf", leaf);
 
-            var noises = 0;
-            void Listener(Noise _) => noises++;
-            NoiseBus.Heard += Listener;
+            var heard = 0;
+            var filtered = 0;
+            void OnHeard(Noise _) => heard++;
+            void OnFiltered(Noise _) => filtered++;
+
+            NoiseBus.Heard += OnHeard;
+            NoiseBus.Filtered += OnFiltered;
 
             try
             {
@@ -190,14 +193,18 @@ namespace Granny.Tests
 
                 door.Interact(player);
                 Assert.IsFalse(door.IsOpen);
+
+                door.Slam(player);
             }
             finally
             {
-                NoiseBus.Heard -= Listener;
+                NoiseBus.Heard -= OnHeard;
+                NoiseBus.Filtered -= OnFiltered;
                 Object.DestroyImmediate(doorGo);
             }
 
-            Assert.AreEqual(2, noises, "Each swing should be heard once.");
+            Assert.AreEqual(2, filtered, "Easing a door open and shut is silent, as in the original.");
+            Assert.AreEqual(1, heard, "Slamming it is not.");
         }
 
         [UnityTest]
@@ -225,7 +232,7 @@ namespace Granny.Tests
             Assert.IsTrue(door.IsLocked, "Without the key the door must stay locked.");
             Assert.IsFalse(door.IsOpen);
 
-            inventory.TryTake(MakeItem("testkey", ItemCarry.Pocketed, "key.test"));
+            inventory.TryTake(MakeItem("testkey", "key.test"));
             door.Interact(player);
 
             Assert.IsFalse(door.IsLocked);
@@ -237,7 +244,7 @@ namespace Granny.Tests
         [UnityTest]
         public IEnumerator SearchingADrawerRevealsItsContentsOnce()
         {
-            var contents = MakeItem("wirecutters", ItemCarry.Held, "cut");
+            var contents = MakeItem("wirecutters", "cut");
 
             var prefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
             prefab.transform.SetParent(sceneRoot.transform);

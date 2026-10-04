@@ -29,7 +29,16 @@ param(
 
     [string]$EditorVersion = '6000.5.8f1',
 
-    [string]$LogDir
+    [string]$LogDir,
+
+    # Batchmode normally runs with -nographics, which is faster but cannot draw
+    # anything. The scenario capture renders the game to image files, so it needs
+    # a real graphics device.
+    [switch]$WithGraphics,
+
+    # Extra arguments passed straight to Unity, e.g. -testFilter or a flag the
+    # test itself looks for.
+    [string[]]$Extra = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -85,7 +94,9 @@ function Invoke-Unity {
 }
 
 $stamp = Get-Date -Format 'HHmmss'
-$common = @('-batchmode', '-nographics', '-projectPath', $projectDir)
+$common = @('-batchmode')
+if (-not $WithGraphics) { $common += '-nographics' }
+$common += @('-projectPath', $projectDir)
 
 switch ($Action) {
     'compile' {
@@ -111,7 +122,7 @@ switch ($Action) {
         $results = Join-Path $LogDir "TestResults-$Platform.xml"
         if (Test-Path $results) { Remove-Item $results -Force }
 
-        $args = $common + @('-runTests', '-testPlatform', $Platform, '-testResults', $results)
+        $args = $common + @('-runTests', '-testPlatform', $Platform, '-testResults', $results) + $Extra
 
         $code = Invoke-Unity -Arguments $args -LogPath $log
         if (-not (Test-Path $results)) {

@@ -178,5 +178,127 @@ namespace Granny.Tests
             Assert.IsNotNull(door, "No escape door. Run Granny > Build Escape Door.");
             Assert.AreEqual(3, door.StagesRemaining, "The front door should start with three fastenings.");
         }
+
+        // ------------------------------------------------------------------
+        // Things that were actually wrong, and must not come back
+        // ------------------------------------------------------------------
+
+        static Vector3 OnNavMesh(Vector3 position, string what)
+        {
+            Assert.IsTrue(
+                NavMesh.SamplePosition(position, out var hit, 3f, NavMesh.AllAreas),
+                $"{what} at {position} has no NavMesh anywhere near it.");
+
+            return hit.position;
+        }
+
+        [Test]
+        public void SheCanWalkFromWhereSheStartsToEveryPlaceThatMatters()
+        {
+            // The regression this pins: with the default 0.5 m agent, doorways
+            // eroded shut and whole floors became unreachable. She would stand in
+            // the cellar all run, which read as "the AI is broken".
+            var spawn = GameObject.Find("GrannySpawn");
+            Assert.IsNotNull(spawn, "No GrannySpawn marker.");
+
+            var from = OnNavMesh(spawn.transform.position, "Her starting point");
+
+            var destinations = new System.Collections.Generic.List<(string name, Vector3 point)>
+            {
+                ("the bed", GameObject.Find("Bed").transform.position),
+                ("the front door", Find<EscapeDoor>().transform.position + Vector3.back * 1.5f),
+            };
+
+            foreach (var marker in GameObject.FindGameObjectsWithTag("SpawnPoint"))
+                destinations.Add((marker.name, marker.transform.position));
+
+            foreach (var (name, point) in destinations)
+            {
+                var path = new NavMeshPath();
+                NavMesh.CalculatePath(from, OnNavMesh(point, name), NavMesh.AllAreas, path);
+
+                Assert.AreEqual(NavMeshPathStatus.PathComplete, path.status,
+                    $"She cannot reach {name}. A door is too narrow, or a floor is cut off.");
+            }
+        }
+
+        [Test]
+        public void NoFurnitureStandsOnTheStairs()
+        {
+            // A wardrobe used to sit squarely on the foot of the stairs to the
+            // first floor, which blocked the only way up from the living room.
+            var stairs = GameObject.Find("House").transform.Find("Stairs");
+            var ramps = new System.Collections.Generic.List<Bounds>();
+
+            foreach (Transform child in stairs)
+            {
+                if (!child.name.StartsWith("Stair_") || child.name.Contains("tread")) continue;
+                if (!child.TryGetComponent<Renderer>(out var renderer)) continue;
+
+                var bounds = renderer.bounds;
+                bounds.Expand(new Vector3(0.6f, 0f, 0.6f));   // keep the foot clear too
+                ramps.Add(bounds);
+            }
+
+            Assert.IsNotEmpty(ramps, "No stair ramps found to test against.");
+
+            var furnishings = GameObject.Find("Furnishings");
+            Assert.IsNotNull(furnishings, "No furniture in the scene.");
+
+            foreach (var collider in furnishings.GetComponentsInChildren<Collider>())
+            {
+                foreach (var ramp in ramps)
+                    Assert.IsFalse(ramp.Intersects(collider.bounds),
+                        $"{collider.transform.parent?.name}/{collider.name} is standing on the stairs.");
+            }
+        }
+
+        [Test]
+        public void EveryInteriorDoorHangsInAnOpening()
+        {
+            // Doors used to be placed from a hand-written list that drifted out of
+            // step with the walls: some sat across their own doorway, and one stood
+            // in the middle of a room with no wall at all.
+            Physics.SyncTransforms();
+
+            var doors = GameObject.Find("Furnishings").GetComponentsInChildren<HingeDoor>();
+            Assert.Greater(doors.Length, 3, "The house should have interior doors.");
+
+            foreach (var door in doors)
+            {
+                var centre = door.transform.position + Vector3.up * 1.2f;
+                var across = door.transform.right;
+
+                foreach (var side in new[] { across, -across })
+                    Assert.IsTrue(
+                        Physics.Raycast(centre, side, 2.2f, GameLayers.SightBlockers,
+                            QueryTriggerInteraction.Ignore),
+                        $"{door.name} has no wall beside it — it is standing in the open.");
+
+                Assert.IsFalse(
+                    Physics.CheckBox(centre, new Vector3(0.45f, 0.8f, 0.12f),
+                        door.transform.rotation, 1 << GameLayers.LevelGeometry,
+                        QueryTriggerInteraction.Ignore),
+                    $"{door.name} is turned across its own doorway, not hung in it.");
+            }
+        }
+
+        [Test]
+        public void WallsStopBelowTheFloorAbove()
+        {
+            // A wall that reaches the top surface of the slab above leaves two
+            // coplanar faces, and they flicker against each other along every wall
+            // line on the storey above.
+            var ground = GameObject.Find("House").transform.Find("Ground");
+
+            foreach (Transform child in ground)
+            {
+                if (!child.name.StartsWith("Wall_")) continue;
+                if (!child.TryGetComponent<Renderer>(out var renderer)) continue;
+
+                Assert.Less(renderer.bounds.max.y, HouseLayout.FloorY(HouseLayout.Upper) - 0.05f,
+                    $"{child.name} reaches into the floor above.");
+            }
+        }
     }
 }

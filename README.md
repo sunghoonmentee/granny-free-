@@ -134,8 +134,18 @@ Unity Hub에서 **6000.5.8f1** 버전으로 `GrannyGame/` 폴더를 엽니다.
 ```
 
 > 씬을 처음부터 다시 만들 경우 **순서가 중요합니다**:
-> `ProjectBootstrap` → `PlayerRigBuilder` → `HouseBuilder` → `ContentBuilder` → `GrannyBuilder` → `EscapeBuilder`.
-> 각 빌더는 앞선 빌더가 만든 프리팹과 마커를 참조하고, 마지막 두 개가 NavMesh를 다시 굽습니다.
+> `ProjectBootstrap` → `ContentBuilder` → `PlayerRigBuilder` → `HouseBuilder` → `GrannyBuilder` → `EscapeBuilder` → `MenuBuilder`.
+> 각 빌더는 앞선 빌더가 만든 프리팹과 마커를 참조하고, 마지막에 NavMesh를 다시 굽습니다.
+> `ContentBuilder`가 `HouseBuilder`보다 먼저여야 합니다 — 집이 문·서랍·옷장 프리팹을 가져다 쓰기 때문입니다.
+
+### 실제 플레이 장면 녹화
+
+지하의 아가타가 2층에서 깨진 병 소리를 듣고 올라오는지를 실제로 실행해 프레임으로 남깁니다.
+결과는 `unity-logs/scenario/<시각>/`에 프레임 이미지와 이동 경로 CSV로 저장됩니다.
+
+```powershell
+./tools/unity.ps1 test -Platform PlayMode -WithGraphics -Extra @('-runScenario','-testFilter','HearingScenarioCapture')
+```
 
 결과를 다시 읽어보려면:
 

@@ -14,7 +14,6 @@ namespace Granny.Gameplay.AI
     {
         [Header("Bite")]
         [SerializeField, Min(0.5f)] float holdSeconds = 4.5f;
-        [SerializeField, Min(0f)] float snapNoiseRadius = 26f;
 
         [Header("Freeing")]
         [Tooltip("Seconds shaved off by prying it open with a tool.")]
@@ -63,7 +62,7 @@ namespace Granny.Gameplay.AI
 
             // Loud on purpose. Being trapped is only frightening because it is
             // also an announcement.
-            NoiseBus.Emit(transform.position, snapNoiseRadius, NoiseKind.Breakage, gameObject);
+            NoiseBus.Emit(transform.position, NoiseKind.Trap, gameObject);
         }
 
         public bool CanInteract(GameObject interactor) => IsArmed || HasCaptive;

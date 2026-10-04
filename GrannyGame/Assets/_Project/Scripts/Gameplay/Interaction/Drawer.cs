@@ -25,9 +25,6 @@ namespace Granny.Gameplay.Interaction
         [SerializeField] ItemDefinition contents;
         [SerializeField] Transform contentsAnchor;
 
-        [Header("Noise")]
-        [SerializeField, Min(0f)] float noiseRadius = 5.5f;
-
         Vector3 closedPosition;
         float openAmount;
         float target;
@@ -65,7 +62,9 @@ namespace Granny.Gameplay.Interaction
         public void Interact(GameObject interactor)
         {
             target = IsOpen ? 0f : 1f;
-            NoiseBus.Emit(transform.position, noiseRadius, NoiseKind.Machine, gameObject);
+            // Reported, but filtered: searching costs time with your back to the
+            // door, not noise. See NoiseRules.
+            NoiseBus.Emit(transform.position, NoiseKind.Container, gameObject);
 
             if (!IsOpen || searched) return;
 

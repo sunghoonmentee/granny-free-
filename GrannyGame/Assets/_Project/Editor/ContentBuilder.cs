@@ -70,20 +70,24 @@ namespace Granny.EditorTools
         /// The starting item table. Tags rather than ids are what locks match on,
         /// so a second prying tool can be added later without touching any door.
         /// </summary>
-        static readonly (string id, string display, ItemCarry carry, string[] tags,
-            Color colour, Vector3 size, float loudness)[] ItemTable =
+        static readonly (string id, string display, string[] tags,
+            Color colour, Vector3 size, float loudness, bool breakable)[] ItemTable =
         {
-            ("hammer", "Hammer", ItemCarry.Held, new[] { "pry" },
-                new Color(0.55f, 0.42f, 0.28f), new Vector3(0.08f, 0.30f, 0.08f), 1.2f),
+            ("hammer", "Hammer", new[] { "pry" },
+                new Color(0.55f, 0.42f, 0.28f), new Vector3(0.08f, 0.30f, 0.08f), 1.2f, false),
 
-            ("wirecutters", "Wirecutters", ItemCarry.Held, new[] { "cut" },
-                new Color(0.75f, 0.15f, 0.15f), new Vector3(0.07f, 0.22f, 0.05f), 0.9f),
+            ("wirecutters", "Wirecutters", new[] { "cut" },
+                new Color(0.75f, 0.15f, 0.15f), new Vector3(0.07f, 0.22f, 0.05f), 0.9f, false),
 
-            ("key.front", "Rusty Key", ItemCarry.Pocketed, new[] { "key.front", "unlock" },
-                new Color(0.85f, 0.72f, 0.30f), new Vector3(0.04f, 0.10f, 0.02f), 0.4f),
+            // A key takes the hand now, exactly like a hammer does.
+            ("key.front", "Rusty Key", new[] { "key.front", "unlock" },
+                new Color(0.85f, 0.72f, 0.30f), new Vector3(0.04f, 0.10f, 0.02f), 0.4f, false),
 
-            ("bottle", "Glass Bottle", ItemCarry.Held, new[] { "throwable" },
-                new Color(0.35f, 0.62f, 0.45f), new Vector3(0.09f, 0.24f, 0.09f), 1.8f),
+            ("bottle", "Glass Bottle", new[] { "throwable" },
+                new Color(0.35f, 0.62f, 0.45f), new Vector3(0.09f, 0.24f, 0.09f), 1.8f, true),
+
+            ("jar", "Preserve Jar", new[] { "throwable" },
+                new Color(0.55f, 0.48f, 0.22f), new Vector3(0.13f, 0.20f, 0.13f), 1.6f, true),
         };
 
         static List<ItemDefinition> BuildItems()
@@ -102,12 +106,11 @@ namespace Granny.EditorTools
                     AssetDatabase.CreateAsset(definition, assetPath);
                 }
 
-                var prefab = BuildItemPrefab(entry.id, entry.colour, entry.size, definition);
+                var prefab = BuildItemPrefab(entry.id, entry.colour, entry.size, definition, entry.breakable);
 
                 var so = new SerializedObject(definition);
                 so.FindProperty("id").stringValue = entry.id;
                 so.FindProperty("displayName").stringValue = entry.display;
-                so.FindProperty("carry").enumValueIndex = (int)entry.carry;
                 so.FindProperty("worldPrefab").objectReferenceValue = prefab;
                 so.FindProperty("impactLoudness").floatValue = entry.loudness;
 
@@ -123,7 +126,8 @@ namespace Granny.EditorTools
             return built;
         }
 
-        static GameObject BuildItemPrefab(string id, Color colour, Vector3 size, ItemDefinition definition)
+        static GameObject BuildItemPrefab(string id, Color colour, Vector3 size,
+            ItemDefinition definition, bool breakable)
         {
             var path = $"{ItemPrefabDir}/{id.Replace('.', '_')}.prefab";
 
@@ -141,6 +145,8 @@ namespace Granny.EditorTools
 
             var pickup = root.AddComponent<PickupItem>();
             Wire(pickup, "definition", definition);
+
+            if (breakable) root.AddComponent<BreakableItem>();
 
             var saved = PrefabUtility.SaveAsPrefabAsset(root, path, out var ok);
             Object.DestroyImmediate(root);
@@ -211,12 +217,26 @@ namespace Granny.EditorTools
             var root = new GameObject("Door");
             root.layer = GameLayers.Door;
 
-            // The leaf is offset inside a pivot at the hinge edge, so rotating the
-            // pivot swings the door about its hinge rather than about its centre.
+            // Two offsets, and both matter:
+            //
+            //   root   sits at the CENTRE of the doorway, because that is what the
+            //          wall builder reports and what the placement code has to
+            //          line up with. The old prefab had its root on the hinge
+            //          edge, so every door hung half a leaf out of its opening.
+            //   pivot  sits at the hinge edge, so rotating it swings the door
+            //          about its hinge rather than about its middle.
+            //
+            // The leaf spans the prefab's own local X. A door is therefore turned
+            // a quarter turn from the wall it sits in - see BuildKit.Doorway.
+            var width = BuildKit.DoorWidth - 0.08f;
+            var height = BuildKit.DoorHeight - 0.1f;
+
             var pivot = new GameObject("Pivot").transform;
             pivot.SetParent(root.transform, false);
+            pivot.localPosition = new Vector3(-width * 0.5f, 0f, 0f);
 
-            var leaf = Box("Leaf", pivot, new Vector3(0.45f, 1.0f, 0f), new Vector3(0.9f, 2.0f, 0.08f), wood);
+            var leaf = Box("Leaf", pivot, new Vector3(width * 0.5f, height * 0.5f, 0f),
+                new Vector3(width, height, 0.06f), wood);
             leaf.layer = GameLayers.Door;
 
             var door = root.AddComponent<HingeDoor>();

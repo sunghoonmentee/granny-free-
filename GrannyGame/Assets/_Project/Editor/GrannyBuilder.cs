@@ -59,14 +59,14 @@ namespace Granny.EditorTools
         /// once, rather than how much damage anything does.
         /// </summary>
         static readonly (string name, int days, float patrol, float investigate, float chase,
-            float hearing, float reaction, float sight, float angle, float memory, float search, float check)[]
+            float reaction, float sight, float angle, float memory, float search, float check)[]
             DifficultyTable =
             {
-                ("Practice", 99, 1.0f, 1.4f, 2.6f, 0.5f, 1.20f, 8f, 70f, 2.5f, 4f, 0.15f),
-                ("Easy", 5, 1.2f, 1.8f, 3.4f, 0.75f, 0.70f, 10f, 85f, 4f, 5f, 0.30f),
-                ("Normal", 5, 1.5f, 2.3f, 4.1f, 1.0f, 0.35f, 13f, 105f, 6f, 7f, 0.50f),
-                ("Hard", 5, 1.8f, 2.8f, 4.7f, 1.4f, 0.15f, 17f, 125f, 9f, 10f, 0.70f),
-                ("Extreme", 5, 2.2f, 3.3f, 5.4f, 1.9f, 0.05f, 22f, 150f, 13f, 14f, 0.90f),
+                ("Practice", 99, 1.0f, 1.4f, 2.6f, 1.20f, 8f, 70f, 2.5f, 4f, 0.15f),
+                ("Easy", 5, 1.2f, 1.8f, 3.4f, 0.70f, 10f, 85f, 4f, 5f, 0.30f),
+                ("Normal", 5, 1.5f, 2.3f, 4.1f, 0.35f, 13f, 105f, 6f, 7f, 0.50f),
+                ("Hard", 5, 1.8f, 2.8f, 4.7f, 0.15f, 17f, 125f, 9f, 10f, 0.70f),
+                ("Extreme", 5, 2.2f, 3.3f, 5.4f, 0.05f, 22f, 150f, 13f, 14f, 0.90f),
             };
 
         static List<DifficultyProfile> BuildDifficulties()
@@ -93,7 +93,6 @@ namespace Granny.EditorTools
                 so.FindProperty("patrolSpeed").floatValue = row.patrol;
                 so.FindProperty("investigateSpeed").floatValue = row.investigate;
                 so.FindProperty("chaseSpeed").floatValue = row.chase;
-                so.FindProperty("hearingScale").floatValue = row.hearing;
                 so.FindProperty("reactionDelay").floatValue = row.reaction;
                 so.FindProperty("sightRange").floatValue = row.sight;
                 so.FindProperty("sightAngle").floatValue = row.angle;

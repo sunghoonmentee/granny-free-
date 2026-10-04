@@ -1,4 +1,3 @@
-using System.Text;
 using Granny.Core;
 using Granny.Gameplay.Player;
 using UnityEngine;
@@ -39,8 +38,6 @@ namespace Granny.UI
         [SerializeField] Color crosshairActive = new(1f, 0.9f, 0.55f, 0.95f);
         [SerializeField] Color staminaNormal = new(0.85f, 0.85f, 0.9f, 0.8f);
         [SerializeField] Color staminaExhausted = new(0.9f, 0.35f, 0.3f, 0.9f);
-
-        readonly StringBuilder builder = new();
 
         void Awake()
         {
@@ -92,23 +89,15 @@ namespace Granny.UI
                 crosshair.color = hasTarget ? crosshairActive : crosshairIdle;
         }
 
+        /// <summary>
+        /// One hand, one line. Empty-handed shows nothing at all rather than the
+        /// word "empty" — the HUD should only speak when it has something to say.
+        /// </summary>
         void RefreshInventory()
         {
             if (inventoryLabel == null || inventory == null) return;
 
-            builder.Clear();
-            builder.Append("Hands: ");
-            builder.Append(inventory.Held != null ? inventory.Held.DisplayName : "empty");
-
-            for (var i = 0; i < inventory.Pockets.Count; i++)
-            {
-                var item = inventory.Pockets[i];
-                if (item == null) continue;
-
-                builder.Append("   [").Append(i + 1).Append("] ").Append(item.DisplayName);
-            }
-
-            inventoryLabel.text = builder.ToString();
+            inventoryLabel.text = inventory.Held != null ? inventory.Held.DisplayName : string.Empty;
         }
 
         void UpdateStamina()

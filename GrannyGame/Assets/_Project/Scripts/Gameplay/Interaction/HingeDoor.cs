@@ -27,11 +27,6 @@ namespace Granny.Gameplay.Interaction
         [Tooltip("Whether unlocking uses the item up.")]
         [SerializeField] bool consumeKey = true;
 
-        [Header("Noise")]
-        [SerializeField, Min(0f)] float openNoiseRadius = 6f;
-        [SerializeField, Min(0f)] float slamNoiseRadius = 22f;
-        [SerializeField, Min(0f)] float lockedRattleRadius = 4f;
-
         float closedYaw;
         float targetAngle;
         float currentAngle;
@@ -90,7 +85,7 @@ namespace Granny.Gameplay.Interaction
             {
                 // Nothing opens this from here. Rattling it is a small noise and
                 // tells the player the door is real, not scenery.
-                NoiseBus.Emit(transform.position, lockedRattleRadius, NoiseKind.Door, gameObject);
+                NoiseBus.Emit(transform.position, NoiseKind.LockedRattle, gameObject);
                 return;
             }
 
@@ -99,7 +94,7 @@ namespace Granny.Gameplay.Interaction
 
             if (key == null)
             {
-                NoiseBus.Emit(transform.position, lockedRattleRadius, NoiseKind.Door, gameObject);
+                NoiseBus.Emit(transform.position, NoiseKind.LockedRattle, gameObject);
                 return;
             }
 
@@ -126,7 +121,7 @@ namespace Granny.Gameplay.Interaction
             }
 
             speed = openSpeed;
-            NoiseBus.Emit(transform.position, openNoiseRadius, NoiseKind.Door, gameObject);
+            NoiseBus.Emit(transform.position, NoiseKind.DoorMove, gameObject);
         }
 
         /// <summary>Throws the door open hard. Loud, and meant to be heard rooms away.</summary>
@@ -142,7 +137,7 @@ namespace Granny.Gameplay.Interaction
             }
 
             speed = slamSpeed;
-            NoiseBus.Emit(transform.position, slamNoiseRadius, NoiseKind.Door, gameObject);
+            NoiseBus.Emit(transform.position, NoiseKind.DoorSlam, gameObject);
         }
 
         public void SetLocked(bool value) => locked = value;

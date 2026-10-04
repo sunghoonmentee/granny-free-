@@ -14,13 +14,19 @@ namespace Granny.EditorTools
         const string MaterialDir = "Assets/_Project/Art/Materials";
 
         /// <summary>Storey-to-storey height. Every floor uses the same one.</summary>
-        public const float FloorHeight = 3.2f;
+        public const float FloorHeight = Granny.Core.HouseLayout.FloorHeight;
 
         public const float WallThickness = 0.25f;
         public const float SlabThickness = 0.3f;
 
-        /// <summary>Doorways are wide enough for Granny's NavMesh agent to path through.</summary>
-        public const float DoorWidth = 1.3f;
+        /// <summary>
+        /// Doorways have to survive the NavMesh bake: the walkable area is eroded
+        /// by the agent's radius on both sides, so a 1.5 m opening with a 0.3 m
+        /// agent leaves 0.9 m of path. At the old 1.3 m with the default 0.5 m
+        /// agent it came to 0.3 m, which the voxeliser closed off entirely - and
+        /// that is one of the reasons she never left the cellar.
+        /// </summary>
+        public const float DoorWidth = 1.5f;
         public const float DoorHeight = 2.15f;
 
         // ------------------------------------------------------------------
@@ -114,12 +120,40 @@ namespace Granny.EditorTools
         }
 
         /// <summary>
+        /// An opening left in a wall, reported back so a door can be hung in it.
+        /// Hanging doors from these rather than from a separate list of positions
+        /// is what makes a door in the middle of a room impossible.
+        /// </summary>
+        public readonly struct Doorway
+        {
+            /// <summary>Centre of the opening, at floor level.</summary>
+            public readonly Vector3 Centre;
+
+            /// <summary>Yaw for a door whose leaf spans its own local X.</summary>
+            public readonly float Yaw;
+
+            public readonly float Width;
+
+            public Doorway(Vector3 centre, float yaw, float width)
+            {
+                Centre = centre;
+                Yaw = yaw;
+                Width = width;
+            }
+        }
+
+        /// <summary>
         /// A wall from a to b at floor level <paramref name="floorY"/>, with a
         /// doorway cut at each distance in <paramref name="doorCentres"/> measured
         /// along the run. Each doorway keeps a lintel above it, so the wall still
         /// reads as one surface and Granny cannot path over the top.
+        ///
+        /// The wall stops at the underside of the slab above rather than reaching
+        /// its top surface: a wall that ends exactly level with the floor above
+        /// leaves two coplanar faces, which flicker against each other along every
+        /// wall line on the storey above.
         /// </summary>
-        public static void Wall(Transform parent, string name, Vector2 a, Vector2 b,
+        public static Doorway[] Wall(Transform parent, string name, Vector2 a, Vector2 b,
             float floorY, Material material, int layer, params float[] doorCentres)
         {
             var start = new Vector3(a.x, floorY, a.y);
@@ -127,14 +161,15 @@ namespace Granny.EditorTools
             var run = end - start;
             var length = run.magnitude;
 
-            if (length < 0.01f) return;
+            if (length < 0.01f) return System.Array.Empty<Doorway>();
 
             var direction = run / length;
             var rotation = Quaternion.LookRotation(direction, Vector3.up);
-            var height = FloorHeight;
+            var height = FloorHeight - SlabThickness;
 
             System.Array.Sort(doorCentres);
 
+            var doorways = new System.Collections.Generic.List<Doorway>();
             var cursor = 0f;
             var index = 0;
 
@@ -158,12 +193,42 @@ namespace Granny.EditorTools
                         material, layer, rotation);
                 }
 
+                // A door leaf spans its own local X, so it is turned a quarter turn
+                // from the wall's own facing.
+                doorways.Add(new Doorway(
+                    start + direction * ((gapStart + gapEnd) * 0.5f),
+                    rotation.eulerAngles.y - 90f,
+                    gapEnd - gapStart));
+
                 cursor = gapEnd;
             }
 
             if (cursor < length)
                 Segment(parent, $"{name}_{index}", start, direction, rotation,
                     cursor, length, floorY, height, material, layer);
+
+            return doorways.ToArray();
+        }
+
+        /// <summary>
+        /// A low wall around three sides of a stairwell opening, leaving the side
+        /// the flight arrives at clear. Without it the hole is simply a pit in the
+        /// floor that the player walks into.
+        /// </summary>
+        public static void Railing(Transform parent, string name, Rect hole, float floorY,
+            Material material, int layer, float height = 1.0f)
+        {
+            const float thickness = 0.1f;
+            var centreY = floorY + height * 0.5f;
+
+            Box(parent, $"{name}_W", new Vector3(hole.xMin - thickness * 0.5f, centreY, hole.center.y),
+                new Vector3(thickness, height, hole.height), material, layer);
+
+            Box(parent, $"{name}_E", new Vector3(hole.xMax + thickness * 0.5f, centreY, hole.center.y),
+                new Vector3(thickness, height, hole.height), material, layer);
+
+            Box(parent, $"{name}_S", new Vector3(hole.center.x, centreY, hole.yMin - thickness * 0.5f),
+                new Vector3(hole.width + thickness * 2f, height, thickness), material, layer);
         }
 
         static void Segment(Transform parent, string name, Vector3 start, Vector3 direction,

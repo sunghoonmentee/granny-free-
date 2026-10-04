@@ -24,9 +24,6 @@ namespace Granny.Gameplay.Interaction
         [Tooltip("Optional leaf that swings shut behind the player.")]
         [SerializeField] HingeDoor door;
 
-        [Header("Noise")]
-        [SerializeField, Min(0f)] float enterNoiseRadius = 5f;
-
         GameObject occupant;
 
         public bool IsOccupied => occupant != null;
@@ -72,7 +69,7 @@ namespace Granny.Gameplay.Interaction
 
             if (door != null) door.SetOpen(false, who);
 
-            NoiseBus.Emit(transform.position, enterNoiseRadius, NoiseKind.Door, gameObject);
+            NoiseBus.Emit(transform.position, NoiseKind.Hiding, gameObject);
             OccupancyChanged?.Invoke(occupant);
         }
 
@@ -89,7 +86,7 @@ namespace Granny.Gameplay.Interaction
 
             if (door != null) door.SetOpen(true, who);
 
-            NoiseBus.Emit(transform.position, enterNoiseRadius, NoiseKind.Door, gameObject);
+            NoiseBus.Emit(transform.position, NoiseKind.Hiding, gameObject);
             OccupancyChanged?.Invoke(null);
         }
 
