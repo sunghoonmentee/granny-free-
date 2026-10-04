@@ -12,9 +12,6 @@ namespace Granny.Gameplay.Interaction
     {
         [SerializeField] ItemDefinition definition;
 
-        [Tooltip("Loudness scale when this lands after being dropped or thrown.")]
-        [SerializeField, Min(0f)] float impactNoiseRadius = 7f;
-
         [Tooltip("Impact speed below which landing is silent, so settling does not chatter.")]
         [SerializeField, Min(0f)] float quietImpactSpeed = 2.2f;
 
@@ -44,7 +41,9 @@ namespace Granny.Gameplay.Interaction
             var inventory = interactor.GetComponentInChildren<Player.PlayerInventory>();
             if (inventory == null) return;
 
-            if (inventory.TryTake(definition))
+            // One hand: whatever was already held is put down right here, in the
+            // spot this item is taken from, so the swap never flings anything.
+            if (inventory.TryTake(definition, transform.position))
                 Destroy(gameObject);
         }
 
@@ -59,11 +58,10 @@ namespace Granny.Gameplay.Interaction
 
             noiseCooldownUntil = Time.time + 0.35f;
 
-            NoiseBus.Emit(
-                transform.position,
-                impactNoiseRadius * definition.ImpactLoudness,
-                NoiseKind.Impact,
-                gameObject);
+            // Paper, cloth and the like land silently however hard they are thrown.
+            if (definition.ImpactLoudness <= 0f) return;
+
+            NoiseBus.Emit(transform.position, NoiseKind.ItemImpact, gameObject);
         }
 
         /// <summary>

@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Linq;
 using Granny.Core;
 using Granny.Gameplay;
 using Granny.Gameplay.Interaction;
@@ -34,14 +33,13 @@ namespace Granny.Tests
             return p;
         }
 
-        static ItemDefinition MakeItem(string id, ItemCarry carry)
+        static ItemDefinition MakeItem(string id)
         {
             var item = ScriptableObject.CreateInstance<ItemDefinition>();
 #if UNITY_EDITOR
             var so = new UnityEditor.SerializedObject(item);
             so.FindProperty("id").stringValue = id;
             so.FindProperty("displayName").stringValue = id;
-            so.FindProperty("carry").enumValueIndex = (int)carry;
             so.ApplyModifiedPropertiesWithoutUndo();
 #endif
             return item;
@@ -128,15 +126,26 @@ namespace Granny.Tests
         {
             yield return null;
 
-            inventory.TryTake(MakeItem("hammer", ItemCarry.Held));
-            inventory.TryTake(MakeItem("key.front", ItemCarry.Pocketed));
+            inventory.TryTake(MakeItem("hammer"));
 
             var snapshot = director.Snapshot();
 
             Assert.AreEqual(1, snapshot.day);
             Assert.AreEqual("Hard", snapshot.difficultyName);
             Assert.AreEqual("hammer", snapshot.heldItemId);
-            CollectionAssert.Contains(snapshot.pocketItemIds, "key.front");
+        }
+
+        [UnityTest]
+        public IEnumerator ASnapshotRecordsOnlyTheOneItemInHand()
+        {
+            yield return null;
+
+            inventory.TryTake(MakeItem("hammer"));
+            inventory.TryTake(MakeItem("key.front"));
+
+            // Taking the key put the hammer down, so that is what a resumed run
+            // has to come back with - one thing, the last thing picked up.
+            Assert.AreEqual("key.front", director.Snapshot().heldItemId);
         }
 
         [UnityTest]
@@ -190,7 +199,7 @@ namespace Granny.Tests
             go.SetActive(true);
             yield return null;
 
-            drawer.SetContents(MakeItem("hammer", ItemCarry.Held));
+            drawer.SetContents(MakeItem("hammer"));
             Assert.IsFalse(drawer.HasBeenSearched);
 
             drawer.MarkSearched();
@@ -233,20 +242,6 @@ namespace Granny.Tests
             yield return null;
 
             Assert.AreEqual(4, resumed.Days.Day);
-        }
-
-        [UnityTest]
-        public IEnumerator SnapshotPocketsLineUpWithTheBeltSlots()
-        {
-            yield return null;
-
-            inventory.TryTake(MakeItem("key.front", ItemCarry.Pocketed));
-
-            var snapshot = director.Snapshot();
-
-            Assert.AreEqual(inventory.PocketCapacity, snapshot.pocketItemIds.Count,
-                "Empty slots must be recorded too, or items shuffle position on reload.");
-            Assert.AreEqual("key.front", snapshot.pocketItemIds.First());
         }
     }
 }

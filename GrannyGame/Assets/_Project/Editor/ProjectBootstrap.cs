@@ -151,8 +151,19 @@ namespace Granny.EditorTools
                 AssetDatabase.CreateAsset(pipeline, PipelinePath);
             }
 
-            // A dark house lit by a handful of small lights: shadows on the main
-            // directional light are wasted, per-object lights are not.
+            // Forward+ instead of plain Forward. In Forward, URP lights each object
+            // with at most a handful of the nearest additional lights, and the
+            // house is built from very large pieces - a whole floor slab is one
+            // object, so most of its bulbs were simply dropped and the floor went
+            // black between pools of light. Forward+ has no such per-object limit.
+            var rendererSettings = new SerializedObject(renderer);
+            var modeProperty = rendererSettings.FindProperty("m_RenderingMode");
+            if (modeProperty != null)
+            {
+                modeProperty.intValue = 2;   // RenderingMode.ForwardPlus
+                rendererSettings.ApplyModifiedPropertiesWithoutUndo();
+            }
+
             pipeline.supportsHDR = true;
             pipeline.msaaSampleCount = 4;
             pipeline.shadowDistance = 35f;
@@ -179,7 +190,7 @@ namespace Granny.EditorTools
         {
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.companyName = "sunghoon";
-            PlayerSettings.productName = "Granny";
+            PlayerSettings.productName = Granny.Core.GameIdentity.ProductName;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
             PlayerSettings.runInBackground = true;
         }
@@ -337,14 +348,25 @@ namespace Granny.EditorTools
             if (material != null) go.GetComponent<MeshRenderer>().sharedMaterial = material;
         }
 
+        /// <summary>
+        /// Dim, but readable.
+        ///
+        /// The first pass at this was unplayable: ambient light at 0.035 is black,
+        /// the fog was dense enough to swallow anything past about fifteen metres,
+        /// and the house was painted in 0.14-0.28 albedo on top of that. You could
+        /// not see the room you were standing in. Granny's own house is gloomy but
+        /// legible - you can read the layout, and the torch is for corners and
+        /// cupboards. These values aim at that; the old values become the optional
+        /// "darker" mode in a later phase.
+        /// </summary>
         static void ApplyHorrorLighting()
         {
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.035f, 0.035f, 0.045f);
+            RenderSettings.ambientLight = new Color(0.16f, 0.155f, 0.17f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = new Color(0.02f, 0.02f, 0.03f);
-            RenderSettings.fogDensity = 0.055f;
+            RenderSettings.fogColor = new Color(0.05f, 0.048f, 0.055f);
+            RenderSettings.fogDensity = 0.018f;
             RenderSettings.skybox = null;
         }
     }

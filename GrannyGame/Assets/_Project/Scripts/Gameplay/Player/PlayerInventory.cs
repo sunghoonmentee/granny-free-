@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Granny.Core;
 using Granny.Gameplay.Interaction;
 using UnityEngine;
@@ -7,17 +6,18 @@ using UnityEngine;
 namespace Granny.Gameplay.Player
 {
     /// <summary>
-    /// One item in the hands, plus a small belt of pocketed items.
+    /// One item. That is the whole inventory.
     ///
-    /// The split is the point: tools are bulky, so carrying the hammer means not
-    /// carrying the wirecutters, and every trip back to the toolbox is a trip
-    /// past whatever is hunting you. Keys and cogs are small and just accumulate.
+    /// It is the rule the original is built on, and it is what turns the house
+    /// into a logistics problem: the hammer is in the attic, the door is on the
+    /// ground floor, and you cannot carry the wirecutters at the same time. Every
+    /// tool is a separate trip, and every trip is another chance to be heard.
+    ///
+    /// The belt of pocketed items this replaced is preserved on the
+    /// `backup/belt-inventory` branch.
     /// </summary>
     public sealed class PlayerInventory : MonoBehaviour
     {
-        [Header("Capacity")]
-        [SerializeField, Range(1, 8)] int pocketSlots = 5;
-
         [Header("Dropping")]
         [SerializeField] Transform dropOrigin;
         [SerializeField, Min(0f)] float dropDistance = 0.7f;
@@ -26,16 +26,6 @@ namespace Granny.Gameplay.Player
 
         [Header("Wiring")]
         [SerializeField] PlayerInputReader input;
-
-        ItemDefinition[] pockets;
-
-        /// <summary>
-        /// The belt, allocated on first use rather than in Awake. Edit-mode tests
-        /// never run the MonoBehaviour lifecycle, and an inventory that only works
-        /// once Awake has fired is both harder to test and easy to break by
-        /// adding the component at runtime.
-        /// </summary>
-        ItemDefinition[] Belt => pockets ??= new ItemDefinition[Mathf.Max(1, pocketSlots)];
 
         /// <summary>Where dropped items appear. Falls back to the player's own transform.</summary>
         Transform DropOrigin
@@ -50,14 +40,12 @@ namespace Granny.Gameplay.Player
             }
         }
 
+        /// <summary>What is in the player's hands, or null.</summary>
         public ItemDefinition Held { get; private set; }
 
-        /// <summary>Pocketed items, in slot order. Null entries are empty slots.</summary>
-        public IReadOnlyList<ItemDefinition> Pockets => Belt;
+        public bool IsEmptyHanded => Held == null;
 
-        public int PocketCapacity => Belt.Length;
-
-        /// <summary>Raised whenever the hand or the belt changes, for the HUD.</summary>
+        /// <summary>Raised whenever the hand changes, for the HUD.</summary>
         public event Action Changed;
 
         void Awake()
@@ -70,7 +58,6 @@ namespace Granny.Gameplay.Player
             if (input == null) return;
             input.Dropped += DropHeld;
             input.Threw += ThrowHeld;
-            input.SlotSelected += EquipSlot;
         }
 
         void OnDisable()
@@ -78,62 +65,31 @@ namespace Granny.Gameplay.Player
             if (input == null) return;
             input.Dropped -= DropHeld;
             input.Threw -= ThrowHeld;
-            input.SlotSelected -= EquipSlot;
         }
 
         /// <summary>
-        /// Takes an item into the appropriate place. Held items displace whatever
-        /// is already in the hand — dropping it at the player's feet rather than
-        /// refusing, so picking something up never silently does nothing.
+        /// Takes an item into the hand. Anything already held is put down rather
+        /// than refused, so picking something up never silently does nothing — and
+        /// it is put down where the new item was, so the two simply swap places
+        /// instead of one being flung across the room.
         /// </summary>
-        public bool TryTake(ItemDefinition item)
+        public bool TryTake(ItemDefinition item, Vector3? swapPosition = null)
         {
             if (item == null) return false;
 
-            if (item.Carry == ItemCarry.Pocketed)
-            {
-                var slot = System.Array.IndexOf(Belt, null);
-                if (slot < 0) return false;
-
-                Belt[slot] = item;
-                Changed?.Invoke();
-                return true;
-            }
-
-            if (Held != null) SpawnInWorld(Held, thrown: false);
+            if (Held != null)
+                SpawnInWorld(Held, swapPosition ?? DropPoint(), thrown: false);
 
             Held = item;
             Changed?.Invoke();
             return true;
         }
 
-        /// <summary>Moves a pocketed item into the hand, pocketing or dropping what was there.</summary>
-        public void EquipSlot(int oneBasedSlot)
-        {
-            var index = oneBasedSlot - 1;
-            if (index < 0 || index >= Belt.Length) return;
-
-            var wanted = Belt[index];
-            if (wanted == null) return;
-
-            var previous = Held;
-            Held = wanted;
-            Belt[index] = null;
-
-            if (previous != null)
-            {
-                if (previous.Carry == ItemCarry.Pocketed) Belt[index] = previous;
-                else SpawnInWorld(previous, thrown: false);
-            }
-
-            Changed?.Invoke();
-        }
-
         public void DropHeld()
         {
             if (Held == null) return;
 
-            SpawnInWorld(Held, thrown: false);
+            SpawnInWorld(Held, DropPoint(), thrown: false);
             Held = null;
             Changed?.Invoke();
         }
@@ -142,66 +98,62 @@ namespace Granny.Gameplay.Player
         {
             if (Held == null) return;
 
-            SpawnInWorld(Held, thrown: true);
+            SpawnInWorld(Held, DropPoint(), thrown: true);
             Held = null;
             Changed?.Invoke();
         }
 
         /// <summary>
-        /// Removes an item after it has been used on something. Returns false if
-        /// the item was not actually carried, so callers cannot conjure uses.
+        /// Puts the held item on the floor at a given spot. Used when she catches
+        /// the player: what they were carrying stays where they fell.
+        /// </summary>
+        public void DropHeldAt(Vector3 position)
+        {
+            if (Held == null) return;
+
+            SpawnInWorld(Held, position, thrown: false);
+            Held = null;
+            Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// Removes the item after it has been used on something. Returns false if
+        /// it was not actually being carried, so callers cannot conjure uses.
         /// </summary>
         public bool Consume(ItemDefinition item)
         {
-            if (item == null) return false;
+            if (item == null || Held != item) return false;
 
-            if (Held == item)
-            {
-                Held = null;
-                Changed?.Invoke();
-                return true;
-            }
-
-            var slot = System.Array.IndexOf(Belt, item);
-            if (slot < 0) return false;
-
-            Belt[slot] = null;
+            Held = null;
             Changed?.Invoke();
             return true;
         }
 
-        /// <summary>True if the hand or the belt holds something with this tag.</summary>
+        /// <summary>True if the item in hand carries this tag.</summary>
         public bool HasTag(string tag) => FindByTag(tag) != null;
 
-        /// <summary>
-        /// The carried item matching a tag, preferring what is already in hand so
-        /// the player's explicit choice wins over belt order.
-        /// </summary>
-        public ItemDefinition FindByTag(string tag)
-        {
-            if (Held != null && Held.HasTag(tag)) return Held;
+        /// <summary>The held item if it matches the tag, otherwise null.</summary>
+        public ItemDefinition FindByTag(string tag) =>
+            Held != null && Held.HasTag(tag) ? Held : null;
 
-            foreach (var item in Belt)
-                if (item != null && item.HasTag(tag))
-                    return item;
-
-            return null;
-        }
-
-        void SpawnInWorld(ItemDefinition item, bool thrown)
+        Vector3 DropPoint()
         {
             var origin = DropOrigin;
-            var forward = origin.forward;
-            var position = origin.position + forward * dropDistance;
+            return origin.position + origin.forward * dropDistance;
+        }
 
+        void SpawnInWorld(ItemDefinition item, Vector3 position, bool thrown)
+        {
             var pickup = PickupItem.Spawn(item, position, UnityEngine.Random.rotation);
             if (pickup == null) return;
 
             if (!pickup.TryGetComponent<Rigidbody>(out var body)) return;
 
+            var forward = DropOrigin.forward;
+
             body.linearVelocity = thrown
                 ? forward * throwSpeed
-                : forward * 1.2f + Vector3.up * 0.4f;
+                : forward * 0.4f;
 
             if (thrown)
                 body.angularVelocity = UnityEngine.Random.onUnitSphere * throwSpin;

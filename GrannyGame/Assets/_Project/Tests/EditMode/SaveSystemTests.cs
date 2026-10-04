@@ -26,7 +26,6 @@ namespace Granny.Tests
             difficultyName = "Hard",
             day = 3,
             heldItemId = "hammer",
-            pocketItemIds = new List<string> { "key.front", string.Empty, "battery" },
             clearedLockIds = new List<string> { "Plank" },
             searchedContainerIds = new List<string> { "Dresser_0", "Dresser_4" },
         };
@@ -50,7 +49,6 @@ namespace Granny.Tests
             Assert.AreEqual("Hard", loaded.difficultyName);
             Assert.AreEqual(3, loaded.day);
             Assert.AreEqual("hammer", loaded.heldItemId);
-            CollectionAssert.AreEqual(new[] { "key.front", string.Empty, "battery" }, loaded.pocketItemIds);
             CollectionAssert.AreEqual(new[] { "Plank" }, loaded.clearedLockIds);
             CollectionAssert.AreEqual(new[] { "Dresser_0", "Dresser_4" }, loaded.searchedContainerIds);
         }

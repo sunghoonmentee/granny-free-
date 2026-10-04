@@ -154,5 +154,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Interaction.PickupItem
   definition: {fileID: 11400000, guid: ec64f323a02478c4f838d840f17fa536, type: 2}
-  impactNoiseRadius: 7
   quietImpactSpeed: 2.2

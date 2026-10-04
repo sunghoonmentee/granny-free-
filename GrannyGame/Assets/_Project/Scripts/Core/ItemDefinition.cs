@@ -3,18 +3,6 @@ using UnityEngine;
 namespace Granny.Core
 {
     /// <summary>
-    /// Where an item lives once picked up.
-    /// </summary>
-    public enum ItemCarry
-    {
-        /// <summary>Occupies the hands — a hammer, a crowbar, a shotgun. Only one at a time.</summary>
-        Held,
-
-        /// <summary>Small enough to pocket into the item bar — keys, cogs, batteries.</summary>
-        Pocketed,
-    }
-
-    /// <summary>
     /// Everything the game needs to know about one kind of item. Authored as an
     /// asset so the item table, the spawn tables and the locks can be retuned
     /// without touching code.
@@ -31,8 +19,8 @@ namespace Granny.Core
         [SerializeField] Sprite icon;
 
         [Header("Carrying")]
-        [SerializeField] ItemCarry carry = ItemCarry.Held;
-
+        // There is no carry class any more: everything, from a hammer to a key,
+        // takes the player's one free hand. See PlayerInventory.
         [Tooltip("World prefab spawned when the item is dropped or thrown.")]
         [SerializeField] GameObject worldPrefab;
 
@@ -53,7 +41,6 @@ namespace Granny.Core
         public string DisplayName => displayName;
         public string Description => description;
         public Sprite Icon => icon;
-        public ItemCarry Carry => carry;
         public GameObject WorldPrefab => worldPrefab;
         public bool ConsumedOnUse => consumedOnUse;
         public float ImpactLoudness => impactLoudness;

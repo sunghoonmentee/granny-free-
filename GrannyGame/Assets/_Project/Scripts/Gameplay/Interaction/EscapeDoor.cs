@@ -21,7 +21,6 @@ namespace Granny.Gameplay.Interaction
 
         [Header("Opening")]
         [SerializeField] HingeDoor leaf;
-        [SerializeField, Min(0f)] float openNoiseRadius = 25f;
 
         /// <summary>
         /// The fastenings, resolved on first use rather than in Awake. Edit-mode
@@ -78,16 +77,19 @@ namespace Granny.Gameplay.Interaction
 
             if (!IsUnlocked)
             {
-                // Rattling it is a small noise, and a reminder that she can hear
-                // you trying.
-                NoiseBus.Emit(transform.position, 6f, NoiseKind.Door, gameObject);
+                // Rattling a door she nailed shut is not something she comes for -
+                // but it tells the player the door is real and still fastened.
+                NoiseBus.Emit(transform.position, NoiseKind.LockedRattle, gameObject);
                 return;
             }
 
             used = true;
 
             if (leaf != null) leaf.SetOpen(true, interactor);
-            NoiseBus.Emit(transform.position, openNoiseRadius, NoiseKind.Door, gameObject);
+
+            // The front door coming open is the loudest thing in the house. It no
+            // longer matters to her - the run is over - but it should be heard.
+            NoiseBus.Emit(transform.position, NoiseKind.DoorSlam, gameObject);
 
             Escaped?.Invoke();
 

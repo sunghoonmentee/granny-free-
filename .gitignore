@@ -81,3 +81,7 @@ unity-logs/
 # Local agent workspace
 # ---------------------------------------------------------------
 .claude/
+
+# Unity test runner scratch scene
+GrannyGame/Assets/InitTestScene*.unity
+GrannyGame/Assets/InitTestScene*.unity.meta

@@ -32,10 +32,13 @@ namespace Granny.Gameplay.AI
         /// <summary>A noise she has registered but not yet reacted to.</summary>
         public bool HasPendingNoise => pendingNoiseTime > 0f;
 
+        /// <summary>The last noise she actually acted on. For debugging and the HUD.</summary>
+        public Noise? LastHeard { get; private set; }
+
         public Transform Target => target;
         public DifficultyProfile Difficulty => difficulty;
 
-        Vector3 pendingNoisePosition;
+        Noise pendingNoise;
         float pendingNoiseTime;
 
         /// <summary>
@@ -116,23 +119,27 @@ namespace Granny.Gameplay.AI
             if (pendingNoiseTime > 0f) return;
 
             pendingNoiseTime = 0f;
-            LastKnownPosition = pendingNoisePosition;
+            LastKnownPosition = pendingNoise.Position;
+            LastHeard = pendingNoise;
         }
 
+        /// <summary>
+        /// Everything the bus lets through, she hears — from anywhere in the house,
+        /// on any floor. There is no distance test here on purpose: the original's
+        /// rule is that she hears the house, and a radius check is what made her
+        /// sit in the basement while the player smashed things two storeys up.
+        /// </summary>
         void OnNoise(Noise noise)
         {
-            if (difficulty == null) return;
-
-            // Her own footsteps and the doors she slams must not send her chasing
+            // The doors she slams and the traps she sets must not send her chasing
             // herself around the house.
             if (noise.Source != null && noise.Source.transform.IsChildOf(transform)) return;
 
-            var audible = noise.Radius * difficulty.HearingScale;
-            if ((transform.position - noise.Position).sqrMagnitude > audible * audible) return;
-
-            // A louder, closer noise supersedes one she has not acted on yet.
-            pendingNoisePosition = noise.Position;
-            pendingNoiseTime = Mathf.Max(0.001f, difficulty.ReactionDelay);
+            // The freshest noise wins: a bottle thrown across the hall while she is
+            // already walking somewhere redirects her, which is what makes throwing
+            // one worth doing.
+            pendingNoise = noise;
+            pendingNoiseTime = Mathf.Max(0.001f, difficulty != null ? difficulty.ReactionDelay : 0.35f);
         }
 
         /// <summary>Clears what she knows — used when a new day starts.</summary>
@@ -142,6 +149,7 @@ namespace Granny.Gameplay.AI
             LastKnownPosition = null;
             TimeSinceSeen = float.MaxValue;
             pendingNoiseTime = 0f;
+            LastHeard = null;
             TargetHidingSpot = null;
         }
 

@@ -108,7 +108,6 @@ namespace Granny.EditorTools
             var bob = root.AddComponent<HeadBob>();
             var interactor = root.AddComponent<PlayerInteractor>();
             var inventory = root.AddComponent<PlayerInventory>();
-            root.AddComponent<FootstepNoise>();
             var torch = torchGo.AddComponent<PlayerFlashlight>();
 
             Wire(input, "actions", actions);

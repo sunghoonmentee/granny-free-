@@ -19,13 +19,12 @@ namespace Granny.Tests
         GrannyPerception perception;
         DifficultyProfile profile;
 
-        static DifficultyProfile MakeProfile(float hearing = 1f, float reaction = 0f,
+        static DifficultyProfile MakeProfile(float reaction = 0f,
             float sightRange = 15f, float sightAngle = 100f)
         {
             var p = ScriptableObject.CreateInstance<DifficultyProfile>();
 #if UNITY_EDITOR
             var so = new UnityEditor.SerializedObject(p);
-            so.FindProperty("hearingScale").floatValue = hearing;
             so.FindProperty("reactionDelay").floatValue = reaction;
             so.FindProperty("sightRange").floatValue = sightRange;
             so.FindProperty("sightAngle").floatValue = sightAngle;
@@ -150,32 +149,53 @@ namespace Granny.Tests
         }
 
         [UnityTest]
-        public IEnumerator ANearbyNoiseBecomesSomethingToInvestigate()
+        public IEnumerator ANoiseBecomesSomethingToInvestigate()
         {
             targetGo.transform.position = new Vector3(0f, 0f, -40f);   // out of sight
             yield return null;
             perception.Forget();
 
-            NoiseBus.Emit(new Vector3(4f, 0f, 0f), 10f, NoiseKind.Impact);
+            NoiseBus.Emit(new Vector3(4f, 0f, 0f), NoiseKind.ItemImpact);
             yield return WaitUntil(() => perception.LastKnownPosition.HasValue);
 
             Assert.IsTrue(
                 perception.LastKnownPosition.HasValue,
-                "A noise well inside her hearing radius produced nothing to investigate.");
+                "A dropped item produced nothing to investigate.");
             Assert.AreEqual(4f, perception.LastKnownPosition.Value.x, 0.01f);
         }
 
         [UnityTest]
-        public IEnumerator ADistantNoiseIsIgnored()
+        public IEnumerator ANoiseRightAcrossTheHouseStillCarries()
+        {
+            // This is the regression that mattered: she used to sit in the
+            // basement while the player smashed things two storeys up, because
+            // the noise was checked against a radius.
+            targetGo.transform.position = new Vector3(0f, 0f, -40f);
+            yield return null;
+            perception.Forget();
+
+            NoiseBus.Emit(new Vector3(60f, 6.4f, 0f), NoiseKind.Breakage);
+            yield return WaitUntil(() => perception.LastKnownPosition.HasValue);
+
+            Assert.IsTrue(perception.LastKnownPosition.HasValue,
+                "She hears the house, not a bubble around herself.");
+            Assert.AreEqual(60f, perception.LastKnownPosition.Value.x, 0.01f);
+            Assert.AreEqual(HouseLayout.Attic, perception.LastHeard.Value.Floor);
+        }
+
+        [UnityTest]
+        public IEnumerator WhatTheRulesSilenceNeverBecomesADestination()
         {
             targetGo.transform.position = new Vector3(0f, 0f, -40f);
             yield return null;
             perception.Forget();
 
-            NoiseBus.Emit(new Vector3(60f, 0f, 0f), 5f, NoiseKind.Impact);
+            NoiseBus.Emit(new Vector3(2f, 0f, 0f), NoiseKind.Footstep);
+            NoiseBus.Emit(new Vector3(2f, 0f, 0f), NoiseKind.Container);
             yield return WaitUntil(() => perception.LastKnownPosition.HasValue, maxFrames: 5);
 
-            Assert.IsFalse(perception.LastKnownPosition.HasValue, "A noise past its radius must not carry.");
+            Assert.IsFalse(perception.LastKnownPosition.HasValue,
+                "Walking and searching drawers must not draw her.");
         }
 
         [UnityTest]
@@ -185,12 +205,12 @@ namespace Granny.Tests
             yield return null;
             perception.Forget();
 
-            NoiseBus.Emit(grannyGo.transform.position, 10f, NoiseKind.Footstep, grannyGo);
+            NoiseBus.Emit(grannyGo.transform.position, NoiseKind.DoorSlam, grannyGo);
             yield return WaitUntil(() => perception.LastKnownPosition.HasValue, maxFrames: 5);
 
             Assert.IsFalse(
                 perception.LastKnownPosition.HasValue,
-                "She would otherwise chase her own footsteps around the house.");
+                "She would otherwise chase the doors she slams herself.");
         }
 
         [UnityTest]

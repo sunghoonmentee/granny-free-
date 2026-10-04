@@ -27,7 +27,6 @@ namespace Granny.Gameplay.Player
         InputAction throwAction;
         InputAction flashlightAction;
         InputAction pauseAction;
-        InputAction slotAction;
 
         bool crouchToggleState;
 
@@ -52,9 +51,6 @@ namespace Granny.Gameplay.Player
         public event Action FlashlightToggled;
         public event Action PauseRequested;
 
-        /// <summary>Fires with a 1-based slot index when a number key is pressed.</summary>
-        public event Action<int> SlotSelected;
-
         void Awake()
         {
             if (actions == null)
@@ -63,6 +59,15 @@ namespace Granny.Gameplay.Player
                 enabled = false;
                 return;
             }
+
+            // Work on a private copy. The serialised reference points at one asset
+            // on disk, and an InputActionAsset holds live state: which maps are
+            // enabled and which controls each binding resolved to. Shared, that
+            // state outlives the player — a map left enabled by a player that has
+            // since been unloaded stays enabled, so the next player's Enable() is
+            // a no-op and its actions keep pointing at devices that are gone. A
+            // copy per reader also means two players could never fight over it.
+            actions = Instantiate(actions);
 
             gameplayMap = actions.FindActionMap("Gameplay", throwIfNotFound: true);
 
@@ -74,8 +79,10 @@ namespace Granny.Gameplay.Player
             dropAction = gameplayMap.FindAction("Drop", throwIfNotFound: true);
             throwAction = gameplayMap.FindAction("Throw", throwIfNotFound: true);
             flashlightAction = gameplayMap.FindAction("Flashlight", throwIfNotFound: true);
+            // The action asset still carries a "Slot" action from the belt
+            // inventory. Nothing binds it now that there is only one hand; it is
+            // left in the asset so the number keys are free to be reused.
             pauseAction = gameplayMap.FindAction("Pause", throwIfNotFound: true);
-            slotAction = gameplayMap.FindAction("Slot", throwIfNotFound: true);
         }
 
         void OnEnable()
@@ -87,7 +94,6 @@ namespace Granny.Gameplay.Player
             throwAction.performed += OnThrow;
             flashlightAction.performed += OnFlashlight;
             pauseAction.performed += OnPause;
-            slotAction.performed += OnSlot;
             crouchAction.performed += OnCrouchPerformed;
 
             gameplayMap.Enable();
@@ -102,7 +108,6 @@ namespace Granny.Gameplay.Player
             throwAction.performed -= OnThrow;
             flashlightAction.performed -= OnFlashlight;
             pauseAction.performed -= OnPause;
-            slotAction.performed -= OnSlot;
             crouchAction.performed -= OnCrouchPerformed;
 
             gameplayMap.Disable();
@@ -111,6 +116,12 @@ namespace Granny.Gameplay.Player
             Look = Vector2.zero;
             SprintHeld = false;
             CrouchHeld = false;
+        }
+
+        void OnDestroy()
+        {
+            // The copy made in Awake belongs to nobody else, so it goes with us.
+            if (actions != null) Destroy(actions);
         }
 
         void Update()
@@ -134,12 +145,6 @@ namespace Granny.Gameplay.Player
         void OnThrow(InputAction.CallbackContext _) => Threw?.Invoke();
         void OnFlashlight(InputAction.CallbackContext _) => FlashlightToggled?.Invoke();
         void OnPause(InputAction.CallbackContext _) => PauseRequested?.Invoke();
-
-        void OnSlot(InputAction.CallbackContext context)
-        {
-            var slot = Mathf.RoundToInt(context.ReadValue<float>());
-            if (slot > 0) SlotSelected?.Invoke(slot);
-        }
 
         /// <summary>Silences gameplay input, e.g. while a menu is open or on death.</summary>
         public void SetGameplayEnabled(bool value)

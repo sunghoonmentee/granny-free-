@@ -55,7 +55,6 @@ namespace Granny.Tests
             var so = new UnityEditor.SerializedObject(item);
             so.FindProperty("id").stringValue = id;
             so.FindProperty("displayName").stringValue = id;
-            so.FindProperty("carry").enumValueIndex = (int)ItemCarry.Held;
 
             var tagProp = so.FindProperty("tags");
             tagProp.arraySize = tags.Length;
@@ -192,7 +191,7 @@ namespace Granny.Tests
             var heard = 0;
             void Listener(Noise n)
             {
-                if (n.Kind == NoiseKind.Breakage) heard++;
+                if (n.Kind == NoiseKind.ToolWork) heard++;
             }
 
             NoiseBus.Heard += Listener;

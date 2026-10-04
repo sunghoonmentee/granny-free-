@@ -24,7 +24,6 @@ namespace Granny.Gameplay.Interaction
         [Header("Work")]
         [Tooltip("Seconds of holding still to remove it. Long enough to be caught doing it.")]
         [SerializeField, Min(0f)] float workSeconds = 1.6f;
-        [SerializeField, Min(0f)] float workNoiseRadius = 18f;
 
         [Header("Visuals")]
         [Tooltip("Hidden once the stage is cleared.")]
@@ -77,7 +76,7 @@ namespace Granny.Gameplay.Interaction
             // Each press is one swing of the hammer, not an instant solve. The
             // noise goes out every time, so a locked-out player is announcing
             // their position at the door for as long as the job takes.
-            NoiseBus.Emit(transform.position, workNoiseRadius, NoiseKind.Breakage, gameObject);
+            NoiseBus.Emit(transform.position, NoiseKind.ToolWork, gameObject);
 
             workRemaining -= 0.5f;
             if (workRemaining > 0f) return;

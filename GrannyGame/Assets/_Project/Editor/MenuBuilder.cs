@@ -1,3 +1,4 @@
+using Granny.Core;
 using Granny.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -50,11 +51,10 @@ namespace Granny.EditorTools
             Backdrop(root2.transform);
 
             Label("Title", root2.transform, font, new Vector2(0.5f, 1f), new Vector2(0f, -180f),
-                new Vector2(900f, 90f), TextAnchor.MiddleCenter, 62, Ink).text = "GRANNY";
+                new Vector2(900f, 90f), TextAnchor.MiddleCenter, 62, Ink).text = GameIdentity.Title;
 
             Label("Tagline", root2.transform, font, new Vector2(0.5f, 1f), new Vector2(0f, -250f),
-                new Vector2(900f, 40f), TextAnchor.MiddleCenter, 20, Dim).text =
-                "다섯 밤. 그녀는 소리로 사냥한다.";
+                new Vector2(900f, 40f), TextAnchor.MiddleCenter, 20, Dim).text = GameIdentity.Tagline;
 
             var status = Label("Status", root2.transform, font, new Vector2(0.5f, 0.5f),
                 new Vector2(0f, 150f), new Vector2(900f, 34f), TextAnchor.MiddleCenter, 19, Dim);

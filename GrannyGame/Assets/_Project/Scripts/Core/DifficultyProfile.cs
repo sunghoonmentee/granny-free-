@@ -22,8 +22,9 @@ namespace Granny.Core
         [SerializeField, Min(0.1f)] float chaseSpeed = 4.1f;
 
         [Header("Hearing")]
-        [Tooltip("Multiplies every noise radius. Above 1 she hears the whole floor.")]
-        [SerializeField, Range(0.2f, 3f)] float hearingScale = 1f;
+        // There is no hearing range. She hears every audible action anywhere in
+        // the house, on any floor - see NoiseRules. What difficulty changes is how
+        // long it takes her to set off, which is the player's whole head start.
         [Tooltip("Seconds before she reacts to a sound. Higher gives the player a head start.")]
         [SerializeField, Range(0f, 2f)] float reactionDelay = 0.35f;
 
@@ -48,7 +49,6 @@ namespace Granny.Core
         public float InvestigateSpeed => investigateSpeed;
         public float ChaseSpeed => chaseSpeed;
 
-        public float HearingScale => hearingScale;
         public float ReactionDelay => reactionDelay;
 
         public float SightRange => sightRange;
