@@ -62,7 +62,7 @@ namespace Granny.EditorTools
 
             foreach (var root in scene.GetRootGameObjects())
                 if (root.name is "Greybox" or "House" or "Furnishings" or "Navigation"
-                    or "PatrolPoints" or "Bed" or "Lighting" or "Spawner")
+                    or "PatrolPoints" or "Bed" or "Lighting" or "Spawner" or "NoiseMakers")
                     Object.DestroyImmediate(root);
 
             var palette = new Palette();
@@ -80,6 +80,7 @@ namespace Granny.EditorTools
             BuildStairs(house, palette);
 
             var furniture = Furnish(house, doorways);
+            BuildNoiseMakers();
             PlaceMarkers();
             BuildSpawner(furniture);
             BakeNavigation();
@@ -442,6 +443,66 @@ namespace Granny.EditorTools
             new(6f, BasementY, -5f),
             new(0f, AtticY, 0f),
         };
+
+        // ------------------------------------------------------------------
+        // Things that give the player away
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Floorboards that creak, at the places everybody has to walk through.
+        ///
+        /// These are not scattered at random: every one of them sits on a point
+        /// taken from a recorded run of the house, so each is known to be on
+        /// walkable floor and on the natural route between two storeys. A board
+        /// nobody ever steps on is not a trap, it is decoration.
+        /// </summary>
+        static readonly Vector3[] CreakyBoards =
+        {
+            new(1.2f, BasementY, -4.8f),    // cellar, mid-floor
+            new(5.0f, BasementY, -0.8f),    // cellar, approaching the stairs
+            new(7.2f, GroundY, 7.9f),       // top of the cellar stairs
+            new(2.45f, GroundY, 5.1f),      // hall, crossing east to west
+            new(-2.2f, GroundY, 2.3f),      // middle of the ground floor
+            new(-6.8f, GroundY, 1.8f),      // foot of the stairs up
+            new(-5.1f, UpperY, 7.0f),       // head of the stairs up
+            new(0f, UpperY, 4.8f),          // landing
+            new(5.1f, UpperY, 2.5f),        // outside the bedrooms
+        };
+
+        /// <summary>In the hall, on the last stretch before the front door.</summary>
+        static readonly Vector3 TripwirePosition = new(0f, GroundY, 8.2f);
+
+        static void BuildNoiseMakers()
+        {
+            var root = new GameObject("NoiseMakers").transform;
+
+            for (var i = 0; i < CreakyBoards.Length; i++)
+            {
+                var board = new GameObject($"CreakyFloor_{i}");
+                board.transform.SetParent(root, false);
+                board.transform.position = CreakyBoards[i] + new Vector3(0f, 0.2f, 0f);
+
+                var box = board.AddComponent<BoxCollider>();
+                box.isTrigger = true;
+                box.size = new Vector3(2.2f, 0.5f, 2.2f);
+
+                board.AddComponent<CreakyFloor>();
+            }
+
+            var wire = new GameObject("TripwireBell");
+            wire.transform.SetParent(root, false);
+            wire.transform.position = TripwirePosition + new Vector3(0f, 0.3f, 0f);
+
+            // Shin height and the full width of the opening: you step over it or
+            // you ring it, and crouching does not help.
+            var wireBox = wire.AddComponent<BoxCollider>();
+            wireBox.isTrigger = true;
+            wireBox.size = new Vector3(3.2f, 0.6f, 0.3f);
+
+            wire.AddComponent<TripwireBell>();
+
+            Debug.Log($"[House] {CreakyBoards.Length} creaky boards and 1 tripwire placed");
+        }
 
         static void PlaceMarkers()
         {

@@ -42,6 +42,10 @@ namespace Granny.Core
         [Tooltip("Chance she opens a hiding place she walks past while searching.")]
         [SerializeField, Range(0f, 1f)] float hidingSpotCheckChance = 0.5f;
 
+        [Header("The house")]
+        [Tooltip("Share of the floorboards that creak this run. 0 silences them all.")]
+        [SerializeField, Range(0f, 1f)] float creakyFloorShare = 0.4f;
+
         public string DisplayName => displayName;
         public int DaysAllowed => daysAllowed;
 
@@ -58,5 +62,7 @@ namespace Granny.Core
         public float ChaseMemory => chaseMemory;
         public float SearchDuration => searchDuration;
         public float HidingSpotCheckChance => hidingSpotCheckChance;
+
+        public float CreakyFloorShare => creakyFloorShare;
     }
 }

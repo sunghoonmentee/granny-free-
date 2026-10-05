@@ -88,6 +88,15 @@ namespace Granny.Tests
         }
 
         [Test]
+        public void TheHouseItselfIsLoud()
+        {
+            // Moving is silent, but what the player moves over is not. These two
+            // are the only way walking around can give a position away.
+            Assert.IsTrue(NoiseRules.IsAudible(NoiseKind.Creak));
+            Assert.IsTrue(NoiseRules.IsAudible(NoiseKind.Bell));
+        }
+
+        [Test]
         public void EasingADoorIsQuietButSlammingItIsNot()
         {
             Assert.IsFalse(NoiseRules.IsAudible(NoiseKind.DoorMove));

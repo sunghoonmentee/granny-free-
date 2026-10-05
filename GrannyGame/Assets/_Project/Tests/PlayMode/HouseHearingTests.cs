@@ -1,6 +1,7 @@
 using System.Collections;
 using Granny.Core;
 using Granny.Gameplay.AI;
+using Granny.Gameplay.Interaction;
 using Granny.Gameplay.Player;
 using NUnit.Framework;
 using UnityEngine;
@@ -107,6 +108,90 @@ namespace Granny.Tests
                 $"She never arrived. After 60s she is on {HouseLayout.FloorName(HouseLayout.FloorOf(granny.transform.position))} " +
                 $"at {granny.transform.position}, state {granny.State}, " +
                 $"{Vector3.Distance(granny.transform.position, NoiseSpot):F1} m from the noise.");
+        }
+
+        /// <summary>
+        /// A live floorboard on the first floor, taken from the real house rather
+        /// than built for the test — so this covers where the boards were put and
+        /// how many of them difficulty leaves live, not just the component.
+        /// </summary>
+        CreakyFloor FindLiveBoardUpstairs()
+        {
+            foreach (var board in Object.FindObjectsByType<CreakyFloor>(FindObjectsSortMode.None))
+                if (board.IsArmed && HouseLayout.FloorOf(board.transform.position) == HouseLayout.Upper)
+                    return board;
+
+            return null;
+        }
+
+        [UnityTest]
+        [Timeout(180000)]
+        public IEnumerator AFloorboardUpstairsBringsHerUpFromTheCellar()
+        {
+            yield return null;
+
+            var board = FindLiveBoardUpstairs();
+            Assert.IsNotNull(board,
+                "No live floorboard upstairs. Either none were placed or difficulty silenced them all.");
+
+            var spot = board.transform.position;
+            Assert.IsTrue(board.TryCreak(board.gameObject, speed: 2.6f, crouching: false),
+                "A board that will not creak for a walking player is not a trap.");
+
+            var reachedGround = false;
+            var elapsed = 0f;
+
+            while (elapsed < 60f)
+            {
+                elapsed += Time.deltaTime;
+
+                if (HouseLayout.FloorOf(granny.transform.position) >= HouseLayout.Ground)
+                    reachedGround = true;
+
+                if (Vector3.Distance(granny.transform.position, spot) < 3f)
+                {
+                    Assert.IsTrue(reachedGround, "She teleported rather than walked.");
+                    yield break;
+                }
+
+                yield return null;
+            }
+
+            Assert.Fail(
+                $"A creaking board at {spot} never brought her. After 60s she is on " +
+                $"{HouseLayout.FloorName(HouseLayout.FloorOf(granny.transform.position))}, " +
+                $"state {granny.State}.");
+        }
+
+        [UnityTest]
+        [Timeout(120000)]
+        public IEnumerator CrossingTheSameBoardCrouchedLeavesHerWhereSheIs()
+        {
+            yield return null;
+
+            var board = FindLiveBoardUpstairs();
+            Assert.IsNotNull(board);
+
+            var startFloor = HouseLayout.FloorOf(granny.transform.position);
+
+            for (var i = 0; i < 20; i++)
+            {
+                board.TryCreak(board.gameObject, speed: 1.3f, crouching: true);
+                yield return null;
+            }
+
+            var elapsed = 0f;
+            while (elapsed < 6f)
+            {
+                elapsed += Time.deltaTime;
+
+                Assert.AreNotEqual(GrannyState.Investigate, granny.State,
+                    "Crouching over a board has to be the answer to it.");
+
+                yield return null;
+            }
+
+            Assert.AreEqual(startFloor, HouseLayout.FloorOf(granny.transform.position));
         }
 
         [UnityTest]
