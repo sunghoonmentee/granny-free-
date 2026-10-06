@@ -224,6 +224,7 @@ GameObject:
   - component: {fileID: 470349138943416774}
   - component: {fileID: 2449607863750098867}
   - component: {fileID: 2542897035149180647}
+  - component: {fileID: 4658955131421736660}
   - component: {fileID: 2834520702642184369}
   m_Layer: 7
   m_Name: Granny
@@ -309,6 +310,22 @@ MonoBehaviour:
   difficulty: {fileID: 11400000, guid: 0adfab80b2b79b240a72e2b31642cedb, type: 2}
   eye: {fileID: 7727782950087162241}
   target: {fileID: 0}
+--- !u!114 &4658955131421736660
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6473377301068989799}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 84986b1a071e2d3438ff277249315f3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.AI.TrapSetter
+  trapPrefab: {fileID: 5498582886595820191, guid: 29edf34fc6f8b394b9dc6541a5acc50f, type: 3}
+  chokePointReach: 9
+  minimumSpacing: 2.5
+  fallbackLimit: 3
 --- !u!114 &2834520702642184369
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -324,4 +341,5 @@ MonoBehaviour:
   patrolPoints: []
   patrolPauseSeconds: 2
   catchRange: 1.35
+  trapSetSeconds: 1.4
   doorReach: 1.6

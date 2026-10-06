@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Granny.Core;
+using Granny.Gameplay.AI;
 using Granny.Gameplay.Interaction;
 using Granny.UI;
 using UnityEditor;
@@ -164,6 +165,7 @@ namespace Granny.EditorTools
             public GameObject Drawer;
             public GameObject Door;
             public GameObject Wardrobe;
+            public GameObject BearTrap;
         }
 
         static Furniture BuildFurniture() => new()
@@ -171,7 +173,47 @@ namespace Granny.EditorTools
             Drawer = BuildDrawerPrefab(),
             Door = BuildDoorPrefab(),
             Wardrobe = BuildWardrobePrefab(),
+            BearTrap = BuildBearTrapPrefab(),
         };
+
+        /// <summary>
+        /// The trap she leaves behind. Low and dark on purpose: it is meant to be
+        /// missable at a walk and obvious if you are looking at the floor, which
+        /// is the trade the player makes every time they hurry.
+        /// </summary>
+        static GameObject BuildBearTrapPrefab()
+        {
+            var path = $"{PropPrefabDir}/BearTrap.prefab";
+            var iron = EnsureMaterial("PropTrapIron", new Color(0.20f, 0.19f, 0.18f));
+            var sprung = EnsureMaterial("PropTrapSprung", new Color(0.30f, 0.26f, 0.22f));
+
+            var root = new GameObject("BearTrap");
+            root.layer = GameLayers.Prop;
+
+            var armed = new GameObject("Armed");
+            armed.transform.SetParent(root.transform, false);
+            Box("Jaws", armed.transform, new Vector3(0f, 0.06f, 0f), new Vector3(0.62f, 0.12f, 0.62f), iron);
+            Box("JawL", armed.transform, new Vector3(-0.30f, 0.20f, 0f), new Vector3(0.06f, 0.30f, 0.60f), iron);
+            Box("JawR", armed.transform, new Vector3(0.30f, 0.20f, 0f), new Vector3(0.06f, 0.30f, 0.60f), iron);
+
+            var closed = new GameObject("Sprung");
+            closed.transform.SetParent(root.transform, false);
+            Box("Shut", closed.transform, new Vector3(0f, 0.09f, 0f), new Vector3(0.62f, 0.18f, 0.28f), sprung);
+            closed.SetActive(false);
+
+            // The bite area, not the metal: a trigger, so walking into one is
+            // caught by the trap rather than blocked by it.
+            var trigger = root.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.center = new Vector3(0f, 0.25f, 0f);
+            trigger.size = new Vector3(0.75f, 0.5f, 0.75f);
+
+            var trap = root.AddComponent<BearTrap>();
+            Wire(trap, "armedVisual", armed);
+            Wire(trap, "sprungVisual", closed);
+
+            return SavePrefab(root, path);
+        }
 
         static GameObject BuildDrawerPrefab()
         {

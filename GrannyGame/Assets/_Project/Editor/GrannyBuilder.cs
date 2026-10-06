@@ -166,6 +166,18 @@ namespace Granny.EditorTools
             Wire(perception, "difficulty", difficulty);
             Wire(perception, "eye", eye);
 
+            // She carries her own supply of traps. Looking the prefab up here
+            // rather than at runtime keeps the dependency visible in the asset,
+            // not hidden in a Resources.Load buried in the brain.
+            var setter = root.AddComponent<TrapSetter>();
+            var trapPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Prefabs/Props/BearTrap.prefab");
+
+            if (trapPrefab == null)
+                Debug.LogWarning("[Granny] No BearTrap prefab yet — run Granny > Build Content first.");
+            else
+                Wire(setter, "trapPrefab", trapPrefab);
+
             root.AddComponent<GrannyBrain>();
 
             var saved = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out var ok);

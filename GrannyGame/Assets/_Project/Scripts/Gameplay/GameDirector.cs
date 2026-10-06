@@ -189,6 +189,12 @@ namespace Granny.Gameplay
             if (granny != null && grannySpawn != null)
                 granny.ResetForNewDay(grannySpawn.position);
 
+            // Hers are picked up; the ones built into the house are reset where
+            // they stand. A night's worth of traps should not carry over, or by
+            // day four the house would be unplayable.
+            var setter = FindAnyObjectByType<TrapSetter>();
+            if (setter != null) setter.ClearAll();
+
             foreach (var trap in FindObjectsByType<BearTrap>(FindObjectsSortMode.None))
                 trap.Rearm();
 

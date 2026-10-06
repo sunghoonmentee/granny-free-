@@ -18,6 +18,9 @@ namespace Granny.Gameplay.AI
         /// <summary>At the spot, poking around — opening wardrobes, looking under beds.</summary>
         Search,
 
+        /// <summary>Kneeling down to leave a bear trap behind before moving on.</summary>
+        SetTrap,
+
         /// <summary>Has the player in sight and is closing.</summary>
         Chase,
 
@@ -46,17 +49,26 @@ namespace Granny.Gameplay.AI
         [Tooltip("Distance at which the player is caught.")]
         [SerializeField, Min(0.2f)] float catchRange = 1.35f;
 
+        [Header("Traps")]
+        [Tooltip("Seconds she spends kneeling to set one. Leaving it at zero still works.")]
+        [SerializeField, Min(0f)] float trapSetSeconds = 1.4f;
+
         [Header("Doors")]
         [Tooltip("How far ahead she checks for a closed door to shove open.")]
         [SerializeField, Min(0f)] float doorReach = 1.6f;
 
         NavMeshAgent agent;
         GrannyPerception perception;
+        TrapSetter trapSetter;
 
         int patrolIndex;
         float stateTimer;
         float pauseTimer;
         Interaction.HidingSpot searchingSpot;
+
+        /// <summary>Where the search that failed happened — where the trap goes.</summary>
+        Vector3 lastSearchSpot;
+        bool trapLaidThisVisit;
 
         public GrannyState State { get; private set; } = GrannyState.Patrol;
 
@@ -70,6 +82,7 @@ namespace Granny.Gameplay.AI
         {
             agent = GetComponent<NavMeshAgent>();
             perception = GetComponent<GrannyPerception>();
+            trapSetter = GetComponent<TrapSetter>();
 
             if (patrolPoints.Count == 0) CollectPatrolPoints();
         }
@@ -87,6 +100,7 @@ namespace Granny.Gameplay.AI
                 case GrannyState.Patrol: TickPatrol(); break;
                 case GrannyState.Investigate: TickInvestigate(); break;
                 case GrannyState.Search: TickSearch(); break;
+                case GrannyState.SetTrap: TickSetTrap(); break;
                 case GrannyState.Chase: TickChase(); break;
                 case GrannyState.Catch: break;
             }
@@ -149,7 +163,33 @@ namespace Granny.Gameplay.AI
 
             if (stateTimer < duration) return;
 
+            // Nobody here. She leaves something behind for whoever made the noise
+            // and goes back to her rounds.
+            lastSearchSpot = transform.position;
             perception.Forget();
+
+            Enter(trapSetter != null ? GrannyState.SetTrap : GrannyState.Patrol);
+        }
+
+        void TickSetTrap()
+        {
+            if (perception.CanSeeTarget) { Enter(GrannyState.Chase); return; }
+
+            // A fresh noise elsewhere is worth more than finishing this.
+            if (perception.LastKnownPosition.HasValue) { Enter(GrannyState.Investigate); return; }
+
+            if (stateTimer < trapSetSeconds) return;
+
+            if (!trapLaidThisVisit)
+            {
+                trapLaidThisVisit = true;
+
+                var profile = perception.Difficulty;
+                if (profile != null) trapSetter.Limit = profile.TrapLimit;
+
+                trapSetter.Lay(lastSearchSpot);
+            }
+
             Enter(GrannyState.Patrol);
         }
 
@@ -208,6 +248,12 @@ namespace Granny.Gameplay.AI
             else
             {
                 searchingSpot = null;
+            }
+
+            if (next == GrannyState.SetTrap)
+            {
+                agent.ResetPath();
+                trapLaidThisVisit = false;
             }
 
             if (next == GrannyState.Catch) agent.ResetPath();

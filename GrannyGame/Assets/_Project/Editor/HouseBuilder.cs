@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Granny.Core;
 using Granny.Gameplay;
+using Granny.Gameplay.AI;
 using Granny.Gameplay.Interaction;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -472,6 +473,27 @@ namespace Granny.EditorTools
         /// <summary>In the hall, on the last stretch before the front door.</summary>
         static readonly Vector3 TripwirePosition = new(0f, GroundY, 8.2f);
 
+        /// <summary>
+        /// Where she puts a trap when a search comes up empty.
+        ///
+        /// Every one is a place the player has to pass through rather than a
+        /// place they might wander into — the heads and feet of the two flights,
+        /// the hall, the landing. Taken from the same recorded run as the
+        /// floorboards, so each is known to be reachable floor.
+        /// </summary>
+        static readonly Vector3[] TrapSpots =
+        {
+            new(5.0f, BasementY, -0.8f),    // cellar, at the foot of the stairs
+            new(-6.0f, BasementY, -5.0f),   // cellar, the far end
+            new(7.2f, GroundY, 7.9f),       // head of the cellar stairs
+            new(-6.8f, GroundY, 1.8f),      // foot of the stairs up
+            new(0f, GroundY, 6.5f),         // hall, in front of the door
+            new(-2.2f, GroundY, 2.3f),      // the middle of the ground floor
+            new(-5.1f, UpperY, 7.0f),       // head of the stairs up
+            new(0f, UpperY, 4.8f),          // the landing
+            new(5.1f, UpperY, 2.5f),        // outside the bedrooms
+        };
+
         static void BuildNoiseMakers()
         {
             var root = new GameObject("NoiseMakers").transform;
@@ -501,7 +523,20 @@ namespace Granny.EditorTools
 
             wire.AddComponent<TripwireBell>();
 
-            Debug.Log($"[House] {CreakyBoards.Length} creaky boards and 1 tripwire placed");
+            var spots = new GameObject("TrapSpots").transform;
+            spots.SetParent(root, false);
+
+            for (var i = 0; i < TrapSpots.Length; i++)
+            {
+                var spot = new GameObject($"TrapSpot_{i}");
+                spot.transform.SetParent(spots, false);
+                spot.transform.position = TrapSpots[i];
+                spot.AddComponent<TrapSpot>();
+            }
+
+            Debug.Log(
+                $"[House] {CreakyBoards.Length} creaky boards, 1 tripwire and " +
+                $"{TrapSpots.Length} trap spots placed");
         }
 
         static void PlaceMarkers()
