@@ -40,10 +40,30 @@ namespace Granny.Gameplay.Player
             }
         }
 
+        /// <summary>
+        /// Tags with a meaning the inventory itself has to know about. Everything
+        /// else is just a string a lock compares against.
+        /// </summary>
+        public const string DartTag = "dart";
+
+        public const string WeaponTag = "weapon";
+
         /// <summary>What is in the player's hands, or null.</summary>
         public ItemDefinition Held { get; private set; }
 
         public bool IsEmptyHanded => Held == null;
+
+        /// <summary>
+        /// Darts, which are the one thing that does not take up the hand.
+        ///
+        /// The crossbow is useless without them and they are useless without it,
+        /// so making a player choose between carrying the weapon and carrying the
+        /// ammunition is not a decision, it is a refusal. Everything else still
+        /// obeys the one-hand rule.
+        /// </summary>
+        public int Darts { get; private set; }
+
+        public bool HasWeapon => Held != null && Held.HasTag(WeaponTag);
 
         /// <summary>Raised whenever the hand changes, for the HUD.</summary>
         public event Action Changed;
@@ -77,6 +97,14 @@ namespace Granny.Gameplay.Player
         {
             if (item == null) return false;
 
+            // Darts go in the pocket, not the hand.
+            if (item.HasTag(DartTag))
+            {
+                Darts++;
+                Changed?.Invoke();
+                return true;
+            }
+
             if (Held != null)
                 SpawnInWorld(Held, swapPosition ?? DropPoint(), thrown: false);
 
@@ -97,6 +125,11 @@ namespace Granny.Gameplay.Player
         public void ThrowHeld()
         {
             if (Held == null) return;
+
+            // The throw button fires a weapon rather than throwing it away. Both
+            // listen to the same input, so without this the first shot would also
+            // hurl the crossbow across the room.
+            if (Held.HasTag(WeaponTag)) return;
 
             SpawnInWorld(Held, DropPoint(), thrown: true);
             Held = null;
@@ -127,6 +160,26 @@ namespace Granny.Gameplay.Player
             Held = null;
             Changed?.Invoke();
             return true;
+        }
+
+        /// <summary>
+        /// Spends one dart. Returns false when the quiver is empty, so a weapon
+        /// cannot fire shots that were never picked up.
+        /// </summary>
+        public bool SpendDart()
+        {
+            if (Darts <= 0) return false;
+
+            Darts--;
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>Puts darts back, e.g. when a day is restored from a save.</summary>
+        public void SetDarts(int count)
+        {
+            Darts = Mathf.Max(0, count);
+            Changed?.Invoke();
         }
 
         /// <summary>True if the item in hand carries this tag.</summary>

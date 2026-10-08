@@ -89,6 +89,25 @@ namespace Granny.EditorTools
 
             ("jar", "Preserve Jar", new[] { "throwable" },
                 new Color(0.55f, 0.48f, 0.22f), new Vector3(0.13f, 0.20f, 0.13f), 1.6f, true),
+
+            // The crossbow, in three trips. Each part takes the hand like
+            // anything else, which is what makes building it cost a night.
+            ("bow.stock", "Carved Stock", new[] { "bow_stock" },
+                new Color(0.42f, 0.30f, 0.18f), new Vector3(0.09f, 0.46f, 0.07f), 1.0f, false),
+
+            ("bow.limb", "Steel Limb", new[] { "bow_limb" },
+                new Color(0.45f, 0.46f, 0.50f), new Vector3(0.52f, 0.05f, 0.05f), 1.1f, false),
+
+            ("bow.cord", "Waxed Cord", new[] { "bow_cord" },
+                new Color(0.72f, 0.66f, 0.46f), new Vector3(0.10f, 0.10f, 0.10f), 0.3f, false),
+
+            ("crossbow", "Crossbow", new[] { "weapon" },
+                new Color(0.38f, 0.30f, 0.22f), new Vector3(0.44f, 0.12f, 0.50f), 1.4f, false),
+
+            // Darts are the exception to the one-hand rule: they go in a pocket,
+            // and they can be picked up again from wherever they landed.
+            ("dart", "Tranquilliser Dart", new[] { "dart" },
+                new Color(0.20f, 0.55f, 0.62f), new Vector3(0.03f, 0.03f, 0.26f), 0.2f, false),
         };
 
         static List<ItemDefinition> BuildItems()

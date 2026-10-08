@@ -26,6 +26,9 @@ namespace Granny.Gameplay.AI
 
         /// <summary>Close enough to grab. The catch is resolved by the day cycle.</summary>
         Catch,
+
+        /// <summary>Flat on the floor, out of it. She gets back up somewhere else.</summary>
+        Downed,
     }
 
     /// <summary>
@@ -49,6 +52,10 @@ namespace Granny.Gameplay.AI
         [Tooltip("Distance at which the player is caught.")]
         [SerializeField, Min(0.2f)] float catchRange = 1.35f;
 
+        [Header("Being put down")]
+        [Tooltip("She gets back up at least this far from the player, so a dart is never a free kill zone.")]
+        [SerializeField, Min(2f)] float respawnDistance = 12f;
+
         [Header("Traps")]
         [Tooltip("Seconds she spends kneeling to set one. Leaving it at zero still works.")]
         [SerializeField, Min(0f)] float trapSetSeconds = 1.4f;
@@ -70,7 +77,18 @@ namespace Granny.Gameplay.AI
         Vector3 lastSearchSpot;
         bool trapLaidThisVisit;
 
+        float stunRemaining;
+
         public GrannyState State { get; private set; } = GrannyState.Patrol;
+
+        /// <summary>True while she is out of it and harmless.</summary>
+        public bool IsDown => State == GrannyState.Downed;
+
+        /// <summary>Seconds left before she gets back up. Zero when she is on her feet.</summary>
+        public float StunRemaining => Mathf.Max(0f, stunRemaining);
+
+        /// <summary>Raised when she goes down, and again when she gets back up elsewhere.</summary>
+        public event Action<bool> DownedChanged;
 
         /// <summary>Raised when she reaches the player. The day cycle listens.</summary>
         public event Action<GameObject> Caught;
@@ -92,6 +110,12 @@ namespace Granny.Gameplay.AI
         void Update()
         {
             stateTimer += Time.deltaTime;
+
+            if (State == GrannyState.Downed)
+            {
+                TickDowned();
+                return;
+            }
 
             ShoveDoorsInTheWay();
 
@@ -215,6 +239,79 @@ namespace Granny.Gameplay.AI
             Enter(GrannyState.Patrol);
         }
 
+        /// <summary>
+        /// Put down, but never out.
+        ///
+        /// She is harmless while she is on the floor and then gets up somewhere
+        /// else entirely, which is what stops a dart from being an answer. It
+        /// buys a stretch of quiet to work in; it does not buy the house.
+        /// </summary>
+        void TickDowned()
+        {
+            stunRemaining -= Time.deltaTime;
+            if (stunRemaining > 0f) return;
+
+            GetUpSomewhereElse();
+        }
+
+        /// <summary>
+        /// Takes her off her feet for <paramref name="seconds"/>. Anything that
+        /// can reach her may call this — a dart, a gas canister, a falling shelf.
+        /// </summary>
+        public void Stun(float seconds)
+        {
+            if (seconds <= 0f) return;
+
+            stunRemaining = seconds;
+            if (State != GrannyState.Downed) Enter(GrannyState.Downed);
+        }
+
+        void GetUpSomewhereElse()
+        {
+            stunRemaining = 0f;
+
+            var spot = FarthestPointFromPlayer();
+            if (spot.HasValue && agent.isOnNavMesh) agent.Warp(spot.Value);
+
+            perception.Forget();
+            Enter(GrannyState.Patrol);
+        }
+
+        /// <summary>
+        /// A patrol marker a long way from the player — the farthest one past the
+        /// minimum, or simply the farthest if the house is too small to offer it.
+        /// </summary>
+        Vector3? FarthestPointFromPlayer()
+        {
+            if (patrolPoints.Count == 0) return null;
+
+            var player = perception.Target;
+            if (player == null) return patrolPoints[0].position;
+
+            Transform best = null;
+            var bestDistance = -1f;
+
+            foreach (var point in patrolPoints)
+            {
+                if (point == null) continue;
+
+                var distance = Vector3.Distance(point.position, player.position);
+                if (distance <= bestDistance) continue;
+
+                best = point;
+                bestDistance = distance;
+            }
+
+            if (best == null) return null;
+
+            if (bestDistance < respawnDistance)
+                Debug.LogWarning(
+                    $"[{nameof(GrannyBrain)}] Nowhere {respawnDistance} m from the player to get up; " +
+                    $"using {best.name} at {bestDistance:F1} m.", this);
+
+            return best.position;
+        }
+
         void TickChase()
         {
             var profile = perception.Difficulty;
@@ -250,6 +347,8 @@ namespace Granny.Gameplay.AI
 
         void Enter(GrannyState next)
         {
+            var wasDown = IsDown;
+
             State = next;
             stateTimer = 0f;
 
@@ -279,6 +378,15 @@ namespace Granny.Gameplay.AI
             }
 
             if (next == GrannyState.Catch) agent.ResetPath();
+
+            if (next == GrannyState.Downed)
+            {
+                if (agent.isOnNavMesh) agent.ResetPath();
+                agent.velocity = Vector3.zero;
+                searchingSpot = null;
+            }
+
+            if (wasDown != IsDown) DownedChanged?.Invoke(IsDown);
 
             StateChanged?.Invoke(next);
         }

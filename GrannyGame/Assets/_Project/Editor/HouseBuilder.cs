@@ -542,6 +542,8 @@ namespace Granny.EditorTools
 
             wire.AddComponent<TripwireBell>();
 
+            BuildWorkbench();
+
             var spots = new GameObject("TrapSpots").transform;
             spots.SetParent(root, false);
 
@@ -556,6 +558,35 @@ namespace Granny.EditorTools
             Debug.Log(
                 $"[House] {CreakyBoards.Length} creaky boards, 1 tripwire and " +
                 $"{TrapSpots.Length} trap spots placed");
+        }
+
+        /// <summary>
+        /// The workbench, in the cellar — the furthest point from everything, so
+        /// each of the three parts is a full crossing of the house.
+        /// </summary>
+        static void BuildWorkbench()
+        {
+            var bench = new GameObject("Workbench");
+            bench.transform.position = new Vector3(-9.5f, BasementY, -7f);
+
+            BuildKit.Box(bench.transform, "Top",
+                new Vector3(0f, 0.85f, 0f), new Vector3(2.0f, 0.1f, 0.8f),
+                BuildKit.Material("PropBench", new Color(0.30f, 0.24f, 0.18f)),
+                GameLayers.Prop);
+
+            var reach = bench.AddComponent<BoxCollider>();
+            reach.isTrigger = true;
+            reach.center = new Vector3(0f, 0.9f, 0f);
+            reach.size = new Vector3(2.2f, 1.6f, 1.4f);
+
+            var workbench = bench.AddComponent<WeaponBench>();
+
+            var so = new SerializedObject(workbench);
+            so.FindProperty("weapon").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/Item_crossbow.asset");
+            so.FindProperty("dart").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/Item_dart.asset");
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         static void PlaceMarkers()
@@ -582,7 +613,12 @@ namespace Granny.EditorTools
             var so = new SerializedObject(spawner);
 
             var required = so.FindProperty("requiredItems");
-            var ids = new[] { "Item_hammer", "Item_wirecutters", "Item_key_front" };
+            var ids = new[]
+            {
+                "Item_hammer", "Item_wirecutters", "Item_key_front",
+                // The three trips that buy the crossbow.
+                "Item_bow_stock", "Item_bow_limb", "Item_bow_cord",
+            };
             required.arraySize = ids.Length;
 
             for (var i = 0; i < ids.Length; i++)
@@ -590,9 +626,12 @@ namespace Granny.EditorTools
                     AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/{ids[i]}.asset");
 
             var optional = so.FindProperty("optionalItems");
-            optional.arraySize = 1;
-            optional.GetArrayElementAtIndex(0).objectReferenceValue =
-                AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/Item_bottle.asset");
+            var extras = new[] { "Item_bottle", "Item_jar" };
+            optional.arraySize = extras.Length;
+
+            for (var i = 0; i < extras.Length; i++)
+                optional.GetArrayElementAtIndex(i).objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/{extras[i]}.asset");
 
             var containers = so.FindProperty("containers");
             containers.arraySize = furniture.Drawers.Count;

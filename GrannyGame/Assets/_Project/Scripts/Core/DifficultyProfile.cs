@@ -42,6 +42,10 @@ namespace Granny.Core
         [Tooltip("Chance she opens a hiding place she walks past while searching.")]
         [SerializeField, Range(0f, 1f)] float hidingSpotCheckChance = 0.5f;
 
+        [Header("Being put down")]
+        [Tooltip("Seconds she stays on the floor after a dart. The original's scale: 120 / 60 / 30 / 15.")]
+        [SerializeField, Range(5f, 180f)] float stunSeconds = 60f;
+
         [Header("Traps")]
         [Tooltip("How many of her bear traps can be out at once. The oldest goes when a new one lands.")]
         [SerializeField, Range(0, 6)] int trapLimit = 3;
@@ -66,6 +70,8 @@ namespace Granny.Core
         public float ChaseMemory => chaseMemory;
         public float SearchDuration => searchDuration;
         public float HidingSpotCheckChance => hidingSpotCheckChance;
+
+        public float StunSeconds => stunSeconds;
 
         public int TrapLimit => trapLimit;
 

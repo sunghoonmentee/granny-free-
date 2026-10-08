@@ -341,5 +341,6 @@ MonoBehaviour:
   patrolPoints: []
   patrolPauseSeconds: 2
   catchRange: 1.35
+  respawnDistance: 12
   trapSetSeconds: 1.4
   doorReach: 1.6
