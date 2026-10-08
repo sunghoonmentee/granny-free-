@@ -63,7 +63,8 @@ namespace Granny.EditorTools
 
             foreach (var root in scene.GetRootGameObjects())
                 if (root.name is "Greybox" or "House" or "Furnishings" or "Navigation"
-                    or "PatrolPoints" or "Bed" or "Lighting" or "Spawner" or "NoiseMakers")
+                    or "PatrolPoints" or "Bed" or "Lighting" or "Spawner" or "NoiseMakers"
+                    or "Audio")
                     Object.DestroyImmediate(root);
 
             var palette = new Palette();
@@ -543,6 +544,7 @@ namespace Granny.EditorTools
             wire.AddComponent<TripwireBell>();
 
             BuildWorkbench();
+            BuildAudio();
 
             var spots = new GameObject("TrapSpots").transform;
             spots.SetParent(root, false);
@@ -587,6 +589,51 @@ namespace Granny.EditorTools
             so.FindProperty("dart").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/Item_dart.asset");
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// The house's speaker, plus the hall clock that is the only thing in it
+        /// that never stops.
+        /// </summary>
+        static void BuildAudio()
+        {
+            var root = new GameObject("Audio").transform;
+
+            var world = root.gameObject.AddComponent<WorldAudio>();
+            var bank = AssetDatabase.LoadAssetAtPath<SoundBank>("Assets/_Project/Audio/SoundBank.asset");
+
+            if (bank == null)
+                Debug.LogWarning("[House] No SoundBank — run Granny > Build Audio first.");
+            else
+            {
+                var so = new SerializedObject(world);
+                so.FindProperty("bank").objectReferenceValue = bank;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            // The clock stands in the hall, by the front door, so its tick is
+            // loudest exactly where the player spends the most nervous minutes.
+            var clock = new GameObject("HallClock");
+            clock.transform.SetParent(root, false);
+            clock.transform.position = new Vector3(-2.5f, GroundY + 1.4f, 9.4f);
+
+            BuildKit.Box(clock.transform, "Case", new Vector3(0f, 0f, 0f),
+                new Vector3(0.4f, 1.1f, 0.22f),
+                BuildKit.Material("PropClock", new Color(0.26f, 0.19f, 0.13f)),
+                GameLayers.Prop);
+
+            if (bank != null && bank.Clock != null)
+            {
+                var source = clock.AddComponent<AudioSource>();
+                source.clip = bank.Clock;
+                source.loop = true;
+                source.playOnAwake = true;
+                source.spatialBlend = 1f;
+                source.rolloffMode = AudioRolloffMode.Linear;
+                source.minDistance = 2f;
+                source.maxDistance = 22f;
+                source.volume = 0.5f;
+            }
         }
 
         static void PlaceMarkers()

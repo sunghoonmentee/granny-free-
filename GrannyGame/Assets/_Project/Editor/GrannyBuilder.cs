@@ -186,6 +186,7 @@ namespace Granny.EditorTools
                 Wire(setter, "trapPrefab", trapPrefab);
 
             root.AddComponent<GrannyBrain>();
+            root.AddComponent<GrannyVoice>();
 
             var saved = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out var ok);
             Object.DestroyImmediate(root);

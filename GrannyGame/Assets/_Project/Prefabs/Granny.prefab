@@ -226,6 +226,7 @@ GameObject:
   - component: {fileID: 2542897035149180647}
   - component: {fileID: 4658955131421736660}
   - component: {fileID: 2834520702642184369}
+  - component: {fileID: 5214097554599026425}
   m_Layer: 7
   m_Name: Granny
   m_TagString: Granny
@@ -344,3 +345,20 @@ MonoBehaviour:
   respawnDistance: 12
   trapSetSeconds: 1.4
   doorReach: 1.6
+--- !u!114 &5214097554599026425
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6473377301068989799}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed712d29195f8dc4fb3ebe3105c503dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.AI.GrannyVoice
+  slowestInterval: 1.15
+  fastestInterval: 0.38
+  fastSpeed: 4
+  volume: 0.8
+  pitchJitter: 0.12

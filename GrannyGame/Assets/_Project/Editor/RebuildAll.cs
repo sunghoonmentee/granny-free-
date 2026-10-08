@@ -28,6 +28,10 @@ namespace Granny.EditorTools
             ContentBuilder.Run();
             PlayerRigBuilder.Run();
 
+            // The house wires the sound bank into its speaker, so the bank has
+            // to exist by the time the house is built.
+            AudioBuilder.Run();
+
             // The house destroys and recreates its own markers...
             HouseBuilder.Run();
 
