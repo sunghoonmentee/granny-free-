@@ -154,11 +154,33 @@ namespace Granny.Gameplay.AI
             var profile = perception.Difficulty;
             var duration = profile != null ? profile.SearchDuration : 6f;
 
-            if (searchingSpot != null && stateTimer > duration * 0.5f)
+            // She walks to the thing she means to open before she opens it — but
+            // only for as long as the search lasts, or a spot she cannot reach
+            // would keep her standing there all night.
+            if (searchingSpot != null && stateTimer < duration)
             {
-                // Opening the wardrobe is the moment the gamble pays off or does not.
+                var reach = Vector3.Distance(transform.position, searchingSpot.transform.position);
+                if (reach > catchRange + 0.6f)
+                {
+                    SetDestination(searchingSpot.transform.position);
+                    return;
+                }
+
+                // Within arm's length. Opening it is the moment the gamble pays
+                // off or does not: someone dragged out is standing in front of
+                // her with nowhere left to be.
+                var caught = searchingSpot.Occupant;
+
                 searchingSpot.ForceExit();
                 searchingSpot = null;
+                perception.TargetHidingSpot = null;
+
+                if (caught != null)
+                {
+                    perception.Suspect(caught.transform.position);
+                    Enter(GrannyState.Chase);
+                    return;
+                }
             }
 
             if (stateTimer < duration) return;
@@ -292,8 +314,18 @@ namespace Granny.Gameplay.AI
             else door.SetOpen(true, gameObject);
         }
 
+        /// <summary>
+        /// Which hiding place, if any, this search opens.
+        ///
+        /// One she watched the player climb into is not a guess and is not
+        /// subject to the dice: she walks over and opens that one. Everything
+        /// else is the old behaviour — a chance she looks in whatever is nearest.
+        /// </summary>
         Interaction.HidingSpot FindHidingSpotToCheck()
         {
+            if (perception.TargetHidingSpot != null)
+                return perception.TargetHidingSpot;
+
             var profile = perception.Difficulty;
             var chance = profile != null ? profile.HidingSpotCheckChance : 0.5f;
 

@@ -367,6 +367,21 @@ namespace Granny.EditorTools
             new(5.5f, AtticY, 6.42f, 180f),
         };
 
+        /// <summary>
+        /// Beds, each with a gap under it to go flat in.
+        ///
+        /// The first is the one the player wakes in every morning, so the worst
+        /// hiding place in the house is also the most familiar — which is the
+        /// point. Panicking into the nearest bed is the mistake the game wants
+        /// to be available.
+        /// </summary>
+        static readonly Placement[] Beds =
+        {
+            new(7f, UpperY, -7f, 315f),     // the guest room, where the day starts
+            new(-9f, UpperY, -6f, 90f),     // the far bedroom
+            new(9.5f, GroundY, -7.5f, 0f),  // the back room downstairs
+        };
+
         sealed class Furniture
         {
             public readonly List<Drawer> Drawers = new();
@@ -395,6 +410,10 @@ namespace Granny.EditorTools
             });
 
             Place(wardrobePrefab, Wardrobes, root);
+
+            var bedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Bed.prefab");
+            if (bedPrefab != null) Place(bedPrefab, Beds, root);
+            else Debug.LogWarning("[House] No Bed prefab — run Granny > Build Content first.");
 
             // Every opening the walls left gets a door, hung in the opening and
             // turned to match the wall it belongs to.

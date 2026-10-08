@@ -42,10 +42,49 @@ namespace Granny.Gameplay.AI
         float pendingNoiseTime;
 
         /// <summary>
+        /// The hiding place she watched the player climb into.
+        ///
         /// Hiding does not make the player invisible to a search — it only breaks
-        /// line of sight. The brain asks this before deciding to open a wardrobe.
+        /// line of sight. If she saw it happen she goes straight there and opens
+        /// it; if she did not, the spot is just another thing she might check.
+        /// That difference is the whole gamble: hiding while she can see you is
+        /// not hiding, it is choosing where to be caught.
         /// </summary>
         public Interaction.HidingSpot TargetHidingSpot { get; set; }
+
+        /// <summary>True when she is going to open a specific spot rather than guess.</summary>
+        public bool SawThemHide => TargetHidingSpot != null;
+
+        /// <summary>
+        /// Watches people get into things. Only what she can see at that moment
+        /// counts — climbing into a wardrobe behind her back is free.
+        /// </summary>
+        void OnSomeoneHid(GameObject occupant)
+        {
+            if (occupant == null)
+            {
+                // They came out. Whatever she thought she knew about that spot is
+                // spent, or she would keep returning to an empty wardrobe.
+                TargetHidingSpot = null;
+                return;
+            }
+
+            if (!CanSeeTarget) return;
+            if (target == null || !occupant.transform.IsChildOf(target.root)) return;
+
+            TargetHidingSpot = FindSpotHolding(occupant);
+            if (TargetHidingSpot != null)
+                LastKnownPosition = TargetHidingSpot.transform.position;
+        }
+
+        static Interaction.HidingSpot FindSpotHolding(GameObject occupant)
+        {
+            foreach (var spot in Object.FindObjectsByType<Interaction.HidingSpot>(FindObjectsSortMode.None))
+                if (spot.Occupant == occupant)
+                    return spot;
+
+            return null;
+        }
 
         void Awake()
         {
@@ -61,9 +100,21 @@ namespace Granny.Gameplay.AI
                 Debug.LogError($"[{nameof(GrannyPerception)}] No difficulty profile assigned.", this);
         }
 
-        void OnEnable() => NoiseBus.Heard += OnNoise;
+        void OnEnable()
+        {
+            NoiseBus.Heard += OnNoise;
 
-        void OnDisable() => NoiseBus.Heard -= OnNoise;
+            foreach (var spot in Object.FindObjectsByType<Interaction.HidingSpot>(FindObjectsSortMode.None))
+                spot.OccupancyChanged += OnSomeoneHid;
+        }
+
+        void OnDisable()
+        {
+            NoiseBus.Heard -= OnNoise;
+
+            foreach (var spot in Object.FindObjectsByType<Interaction.HidingSpot>(FindObjectsSortMode.None))
+                if (spot != null) spot.OccupancyChanged -= OnSomeoneHid;
+        }
 
         void Update()
         {
@@ -103,7 +154,14 @@ namespace Granny.Gameplay.AI
             {
                 TimeSinceSeen = 0f;
                 LastKnownPosition = target.position;
-                TargetHidingSpot = null;
+
+                // Seeing them out in the open makes any wardrobe she was watching
+                // stale. Seeing them while they are still inside one does not —
+                // for a frame or two after climbing in they are visible through
+                // the gap, and clearing here threw away the very thing she had
+                // just watched happen.
+                if (TargetHidingSpot == null || TargetHidingSpot.Occupant == null)
+                    TargetHidingSpot = null;
             }
             else
             {

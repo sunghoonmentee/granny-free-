@@ -166,6 +166,7 @@ namespace Granny.EditorTools
             public GameObject Door;
             public GameObject Wardrobe;
             public GameObject BearTrap;
+            public GameObject Bed;
         }
 
         static Furniture BuildFurniture() => new()
@@ -174,7 +175,52 @@ namespace Granny.EditorTools
             Door = BuildDoorPrefab(),
             Wardrobe = BuildWardrobePrefab(),
             BearTrap = BuildBearTrapPrefab(),
+            Bed = BuildBedPrefab(),
         };
+
+        /// <summary>
+        /// A bed with a gap under it.
+        ///
+        /// The frame is a solid prop and the gap is the hiding place, so the
+        /// player goes flat rather than standing inside the furniture. It is the
+        /// worse of the two places to hide — she only has to kneel — which is
+        /// what makes choosing the wardrobe mean something.
+        /// </summary>
+        static GameObject BuildBedPrefab()
+        {
+            var path = $"{PropPrefabDir}/Bed.prefab";
+            var frame = EnsureMaterial("PropBedFrame", new Color(0.21f, 0.15f, 0.11f));
+            var sheet = EnsureMaterial("PropBedSheet", new Color(0.46f, 0.43f, 0.38f));
+
+            var root = new GameObject("Bed");
+            root.layer = GameLayers.HidingSpot;
+
+            var legs = Box("Frame", root.transform, new Vector3(0f, 0.22f, 0f), new Vector3(1.3f, 0.12f, 2.1f), frame);
+            legs.layer = GameLayers.Prop;
+
+            var mattress = Box("Mattress", root.transform, new Vector3(0f, 0.44f, 0f), new Vector3(1.26f, 0.32f, 2.04f), sheet);
+            mattress.layer = GameLayers.HidingSpot;
+
+            var head = Box("Headboard", root.transform, new Vector3(0f, 0.65f, -1.05f), new Vector3(1.3f, 0.9f, 0.1f), frame);
+            head.layer = GameLayers.Prop;
+
+            // Flat on the floor under the frame, looking out along the room.
+            var viewpoint = new GameObject("Viewpoint").transform;
+            viewpoint.SetParent(root.transform, false);
+            viewpoint.localPosition = new Vector3(0f, -0.75f, 0f);
+
+            var exit = new GameObject("ExitPoint").transform;
+            exit.SetParent(root.transform, false);
+            exit.localPosition = new Vector3(1.1f, 0f, 0f);
+            exit.localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+            var spot = root.AddComponent<HidingSpot>();
+            Wire(spot, "viewpoint", viewpoint);
+            Wire(spot, "exitPoint", exit);
+            SetEnum(spot, "style", (int)HideStyle.Crawl);
+
+            return SavePrefab(root, path);
+        }
 
         /// <summary>
         /// The trap she leaves behind. Low and dark on purpose: it is meant to be
@@ -554,6 +600,21 @@ namespace Granny.EditorTools
         }
 
         /// <summary>Assigns a private [SerializeField] without widening its API.</summary>
+        static void SetEnum(Object target, string fieldName, int value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(fieldName);
+
+            if (prop == null)
+            {
+                Debug.LogError($"[Content] {target.GetType().Name} has no field '{fieldName}'");
+                return;
+            }
+
+            prop.enumValueIndex = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         static void Wire(Object target, string fieldName, Object value)
         {
             var so = new SerializedObject(target);
