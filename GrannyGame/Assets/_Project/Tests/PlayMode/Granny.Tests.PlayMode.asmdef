@@ -6,6 +6,7 @@
         "UnityEditor.TestRunner",
         "Granny.Core",
         "Granny.Gameplay",
+        "Granny.UI",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "Unity.RenderPipelines.Core.Runtime",

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cba4affd5b096bd4ea8fd9d5526c9ce6, type: 3}
+  m_Name: Item_crossbow
+  m_EditorClassIdentifier: Granny.Core::Granny.Core.ItemDefinition
+  id: crossbow
+  displayName: Crossbow
+  description: 
+  icon: {fileID: 0}
+  worldPrefab: {fileID: 7750452168700252933, guid: 5045244918ff10d4abe3ab0e5443ee11, type: 3}
+  tags:
+  - weapon
+  consumedOnUse: 0
+  impactLoudness: 1.4

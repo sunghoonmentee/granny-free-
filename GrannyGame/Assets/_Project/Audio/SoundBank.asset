@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28bdee13a86234d489cfdecf39b25636, type: 3}
+  m_Name: SoundBank
+  m_EditorClassIdentifier: Granny.Core::Granny.Core.SoundBank
+  entries:
+  - kind: 10
+    clip: {fileID: 8300000, guid: 3d26b3bf6b75f7146a4792b98dc681d4, type: 3}
+    volume: 0.85
+    pitchJitter: 0.14
+  - kind: 11
+    clip: {fileID: 8300000, guid: f29ae71f48412d645911c9abe6a20777, type: 3}
+    volume: 1
+    pitchJitter: 0.03
+  - kind: 6
+    clip: {fileID: 8300000, guid: 1b1210f3876a1ee408c3f0dbc0111bca, type: 3}
+    volume: 1
+    pitchJitter: 0.06
+  - kind: 4
+    clip: {fileID: 8300000, guid: d807b0a9f0d3568419719ab156cca1d1, type: 3}
+    volume: 1
+    pitchJitter: 0.1
+  - kind: 3
+    clip: {fileID: 8300000, guid: 4255af5966f7ba749896e48aa82cd1c8, type: 3}
+    volume: 0.8
+    pitchJitter: 0.16
+  - kind: 5
+    clip: {fileID: 8300000, guid: c98fdc66d89aff14c82aaffee653110c, type: 3}
+    volume: 0.9
+    pitchJitter: 0.12
+  - kind: 2
+    clip: {fileID: 8300000, guid: 030e7a9e475d7c14c9873596aeb0167c, type: 3}
+    volume: 1
+    pitchJitter: 0.08
+  - kind: 1
+    clip: {fileID: 8300000, guid: 872376f457ce21d45be2c94d3cd184c1, type: 3}
+    volume: 0.35
+    pitchJitter: 0.18
+  - kind: 7
+    clip: {fileID: 8300000, guid: a1c001cbb4ea75e429d443d545f7a3ce, type: 3}
+    volume: 0.4
+    pitchJitter: 0.15
+  - kind: 8
+    clip: {fileID: 8300000, guid: 1e3c4fcbe8a277049a1a3abc82fea51f, type: 3}
+    volume: 0.35
+    pitchJitter: 0.1
+  - kind: 9
+    clip: {fileID: 8300000, guid: 3b217959b0633de4aa43eaefc26b075b, type: 3}
+    volume: 0.55
+    pitchJitter: 0.12
+  cane: {fileID: 8300000, guid: 97d73e5250049a94fa878f40feeb2d7e, type: 3}
+  heartbeat: {fileID: 8300000, guid: 3acb5ed2cb473c448bbe989520bb56e2, type: 3}
+  clock: {fileID: 8300000, guid: 4bf01c3fbd4c835409a39f1e44964dfa, type: 3}
+  scare: {fileID: 8300000, guid: b287cc12011461d47bf81950564fbd8b, type: 3}

@@ -303,6 +303,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 693d6c3de5b73a64ab820fca0e0d3828, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Interaction.HidingSpot
+  style: 0
   viewpoint: {fileID: 3134739696241586264}
   exitPoint: {fileID: 6639957592759659756}
   door: {fileID: 0}

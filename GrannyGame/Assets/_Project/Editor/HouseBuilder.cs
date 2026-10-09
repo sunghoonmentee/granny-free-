@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Granny.Core;
 using Granny.Gameplay;
+using Granny.Gameplay.AI;
 using Granny.Gameplay.Interaction;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -62,7 +63,8 @@ namespace Granny.EditorTools
 
             foreach (var root in scene.GetRootGameObjects())
                 if (root.name is "Greybox" or "House" or "Furnishings" or "Navigation"
-                    or "PatrolPoints" or "Bed" or "Lighting" or "Spawner")
+                    or "PatrolPoints" or "Bed" or "Lighting" or "Spawner" or "NoiseMakers"
+                    or "Audio")
                     Object.DestroyImmediate(root);
 
             var palette = new Palette();
@@ -80,6 +82,7 @@ namespace Granny.EditorTools
             BuildStairs(house, palette);
 
             var furniture = Furnish(house, doorways);
+            BuildNoiseMakers();
             PlaceMarkers();
             BuildSpawner(furniture);
             BakeNavigation();
@@ -365,6 +368,21 @@ namespace Granny.EditorTools
             new(5.5f, AtticY, 6.42f, 180f),
         };
 
+        /// <summary>
+        /// Beds, each with a gap under it to go flat in.
+        ///
+        /// The first is the one the player wakes in every morning, so the worst
+        /// hiding place in the house is also the most familiar — which is the
+        /// point. Panicking into the nearest bed is the mistake the game wants
+        /// to be available.
+        /// </summary>
+        static readonly Placement[] Beds =
+        {
+            new(7f, UpperY, -7f, 315f),     // the guest room, where the day starts
+            new(-9f, UpperY, -6f, 90f),     // the far bedroom
+            new(9.5f, GroundY, -7.5f, 0f),  // the back room downstairs
+        };
+
         sealed class Furniture
         {
             public readonly List<Drawer> Drawers = new();
@@ -393,6 +411,10 @@ namespace Granny.EditorTools
             });
 
             Place(wardrobePrefab, Wardrobes, root);
+
+            var bedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Bed.prefab");
+            if (bedPrefab != null) Place(bedPrefab, Beds, root);
+            else Debug.LogWarning("[House] No Bed prefab — run Granny > Build Content first.");
 
             // Every opening the walls left gets a door, hung in the opening and
             // turned to match the wall it belongs to.
@@ -443,6 +465,177 @@ namespace Granny.EditorTools
             new(0f, AtticY, 0f),
         };
 
+        // ------------------------------------------------------------------
+        // Things that give the player away
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Floorboards that creak, at the places everybody has to walk through.
+        ///
+        /// These are not scattered at random: every one of them sits on a point
+        /// taken from a recorded run of the house, so each is known to be on
+        /// walkable floor and on the natural route between two storeys. A board
+        /// nobody ever steps on is not a trap, it is decoration.
+        /// </summary>
+        static readonly Vector3[] CreakyBoards =
+        {
+            new(1.2f, BasementY, -4.8f),    // cellar, mid-floor
+            new(5.0f, BasementY, -0.8f),    // cellar, approaching the stairs
+            new(7.2f, GroundY, 7.9f),       // top of the cellar stairs
+            new(2.45f, GroundY, 5.1f),      // hall, crossing east to west
+            new(-2.2f, GroundY, 2.3f),      // middle of the ground floor
+            new(-6.8f, GroundY, 1.8f),      // foot of the stairs up
+            new(-5.1f, UpperY, 7.0f),       // head of the stairs up
+            new(0f, UpperY, 4.8f),          // landing
+            new(5.1f, UpperY, 2.5f),        // outside the bedrooms
+        };
+
+        /// <summary>In the hall, on the last stretch before the front door.</summary>
+        static readonly Vector3 TripwirePosition = new(0f, GroundY, 8.2f);
+
+        /// <summary>
+        /// Where she puts a trap when a search comes up empty.
+        ///
+        /// Every one is a place the player has to pass through rather than a
+        /// place they might wander into — the heads and feet of the two flights,
+        /// the hall, the landing. Taken from the same recorded run as the
+        /// floorboards, so each is known to be reachable floor.
+        /// </summary>
+        static readonly Vector3[] TrapSpots =
+        {
+            new(5.0f, BasementY, -0.8f),    // cellar, at the foot of the stairs
+            new(-6.0f, BasementY, -5.0f),   // cellar, the far end
+            new(7.2f, GroundY, 7.9f),       // head of the cellar stairs
+            new(-6.8f, GroundY, 1.8f),      // foot of the stairs up
+            new(0f, GroundY, 6.5f),         // hall, in front of the door
+            new(-2.2f, GroundY, 2.3f),      // the middle of the ground floor
+            new(-5.1f, UpperY, 7.0f),       // head of the stairs up
+            new(0f, UpperY, 4.8f),          // the landing
+            new(5.1f, UpperY, 2.5f),        // outside the bedrooms
+        };
+
+        static void BuildNoiseMakers()
+        {
+            var root = new GameObject("NoiseMakers").transform;
+
+            for (var i = 0; i < CreakyBoards.Length; i++)
+            {
+                var board = new GameObject($"CreakyFloor_{i}");
+                board.transform.SetParent(root, false);
+                board.transform.position = CreakyBoards[i] + new Vector3(0f, 0.2f, 0f);
+
+                var box = board.AddComponent<BoxCollider>();
+                box.isTrigger = true;
+                box.size = new Vector3(2.2f, 0.5f, 2.2f);
+
+                board.AddComponent<CreakyFloor>();
+            }
+
+            var wire = new GameObject("TripwireBell");
+            wire.transform.SetParent(root, false);
+            wire.transform.position = TripwirePosition + new Vector3(0f, 0.3f, 0f);
+
+            // Shin height and the full width of the opening: you step over it or
+            // you ring it, and crouching does not help.
+            var wireBox = wire.AddComponent<BoxCollider>();
+            wireBox.isTrigger = true;
+            wireBox.size = new Vector3(3.2f, 0.6f, 0.3f);
+
+            wire.AddComponent<TripwireBell>();
+
+            BuildWorkbench();
+            BuildAudio();
+
+            var spots = new GameObject("TrapSpots").transform;
+            spots.SetParent(root, false);
+
+            for (var i = 0; i < TrapSpots.Length; i++)
+            {
+                var spot = new GameObject($"TrapSpot_{i}");
+                spot.transform.SetParent(spots, false);
+                spot.transform.position = TrapSpots[i];
+                spot.AddComponent<TrapSpot>();
+            }
+
+            Debug.Log(
+                $"[House] {CreakyBoards.Length} creaky boards, 1 tripwire and " +
+                $"{TrapSpots.Length} trap spots placed");
+        }
+
+        /// <summary>
+        /// The workbench, in the cellar — the furthest point from everything, so
+        /// each of the three parts is a full crossing of the house.
+        /// </summary>
+        static void BuildWorkbench()
+        {
+            var bench = new GameObject("Workbench");
+            bench.transform.position = new Vector3(-9.5f, BasementY, -7f);
+
+            BuildKit.Box(bench.transform, "Top",
+                new Vector3(0f, 0.85f, 0f), new Vector3(2.0f, 0.1f, 0.8f),
+                BuildKit.Material("PropBench", new Color(0.30f, 0.24f, 0.18f)),
+                GameLayers.Prop);
+
+            var reach = bench.AddComponent<BoxCollider>();
+            reach.isTrigger = true;
+            reach.center = new Vector3(0f, 0.9f, 0f);
+            reach.size = new Vector3(2.2f, 1.6f, 1.4f);
+
+            var workbench = bench.AddComponent<WeaponBench>();
+
+            var so = new SerializedObject(workbench);
+            so.FindProperty("weapon").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/Item_crossbow.asset");
+            so.FindProperty("dart").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/Item_dart.asset");
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// The house's speaker, plus the hall clock that is the only thing in it
+        /// that never stops.
+        /// </summary>
+        static void BuildAudio()
+        {
+            var root = new GameObject("Audio").transform;
+
+            var world = root.gameObject.AddComponent<WorldAudio>();
+            var bank = AssetDatabase.LoadAssetAtPath<SoundBank>("Assets/_Project/Audio/SoundBank.asset");
+
+            if (bank == null)
+                Debug.LogWarning("[House] No SoundBank — run Granny > Build Audio first.");
+            else
+            {
+                var so = new SerializedObject(world);
+                so.FindProperty("bank").objectReferenceValue = bank;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            // The clock stands in the hall, by the front door, so its tick is
+            // loudest exactly where the player spends the most nervous minutes.
+            var clock = new GameObject("HallClock");
+            clock.transform.SetParent(root, false);
+            clock.transform.position = new Vector3(-2.5f, GroundY + 1.4f, 9.4f);
+
+            BuildKit.Box(clock.transform, "Case", new Vector3(0f, 0f, 0f),
+                new Vector3(0.4f, 1.1f, 0.22f),
+                BuildKit.Material("PropClock", new Color(0.26f, 0.19f, 0.13f)),
+                GameLayers.Prop);
+
+            if (bank != null && bank.Clock != null)
+            {
+                var source = clock.AddComponent<AudioSource>();
+                source.clip = bank.Clock;
+                source.loop = true;
+                source.playOnAwake = true;
+                source.spatialBlend = 1f;
+                source.rolloffMode = AudioRolloffMode.Linear;
+                source.minDistance = 2f;
+                source.maxDistance = 22f;
+                source.volume = 0.5f;
+            }
+        }
+
         static void PlaceMarkers()
         {
             var root = new GameObject("PatrolPoints").transform;
@@ -467,7 +660,12 @@ namespace Granny.EditorTools
             var so = new SerializedObject(spawner);
 
             var required = so.FindProperty("requiredItems");
-            var ids = new[] { "Item_hammer", "Item_wirecutters", "Item_key_front" };
+            var ids = new[]
+            {
+                "Item_hammer", "Item_wirecutters", "Item_key_front",
+                // The three trips that buy the crossbow.
+                "Item_bow_stock", "Item_bow_limb", "Item_bow_cord",
+            };
             required.arraySize = ids.Length;
 
             for (var i = 0; i < ids.Length; i++)
@@ -475,9 +673,12 @@ namespace Granny.EditorTools
                     AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/{ids[i]}.asset");
 
             var optional = so.FindProperty("optionalItems");
-            optional.arraySize = 1;
-            optional.GetArrayElementAtIndex(0).objectReferenceValue =
-                AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/Item_bottle.asset");
+            var extras = new[] { "Item_bottle", "Item_jar" };
+            optional.arraySize = extras.Length;
+
+            for (var i = 0; i < extras.Length; i++)
+                optional.GetArrayElementAtIndex(i).objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<ItemDefinition>($"{ItemDataDir}/{extras[i]}.asset");
 
             var containers = so.FindProperty("containers");
             containers.arraySize = furniture.Drawers.Count;

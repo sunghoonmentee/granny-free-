@@ -108,9 +108,19 @@ namespace Granny.EditorTools
             var bob = root.AddComponent<HeadBob>();
             var interactor = root.AddComponent<PlayerInteractor>();
             var inventory = root.AddComponent<PlayerInventory>();
+            var crossbow = root.AddComponent<Crossbow>();
+            var injury = root.AddComponent<PlayerInjury>();
             var torch = torchGo.AddComponent<PlayerFlashlight>();
 
             Wire(input, "actions", actions);
+
+            Wire(injury, "cameraPivot", pivot);
+
+            Wire(crossbow, "input", input);
+            Wire(crossbow, "muzzle", pivot);
+            Wire(crossbow, "dartItem",
+                AssetDatabase.LoadAssetAtPath<ItemDefinition>(
+                    "Assets/_Project/Data/Items/Item_dart.asset"));
 
             Wire(motor, "input", input);
             Wire(motor, "cameraPivot", pivot);

@@ -18,11 +18,17 @@ namespace Granny.Gameplay.AI
         /// <summary>At the spot, poking around — opening wardrobes, looking under beds.</summary>
         Search,
 
+        /// <summary>Kneeling down to leave a bear trap behind before moving on.</summary>
+        SetTrap,
+
         /// <summary>Has the player in sight and is closing.</summary>
         Chase,
 
         /// <summary>Close enough to grab. The catch is resolved by the day cycle.</summary>
         Catch,
+
+        /// <summary>Flat on the floor, out of it. She gets back up somewhere else.</summary>
+        Downed,
     }
 
     /// <summary>
@@ -46,19 +52,43 @@ namespace Granny.Gameplay.AI
         [Tooltip("Distance at which the player is caught.")]
         [SerializeField, Min(0.2f)] float catchRange = 1.35f;
 
+        [Header("Being put down")]
+        [Tooltip("She gets back up at least this far from the player, so a dart is never a free kill zone.")]
+        [SerializeField, Min(2f)] float respawnDistance = 12f;
+
+        [Header("Traps")]
+        [Tooltip("Seconds she spends kneeling to set one. Leaving it at zero still works.")]
+        [SerializeField, Min(0f)] float trapSetSeconds = 1.4f;
+
         [Header("Doors")]
         [Tooltip("How far ahead she checks for a closed door to shove open.")]
         [SerializeField, Min(0f)] float doorReach = 1.6f;
 
         NavMeshAgent agent;
         GrannyPerception perception;
+        TrapSetter trapSetter;
 
         int patrolIndex;
         float stateTimer;
         float pauseTimer;
         Interaction.HidingSpot searchingSpot;
 
+        /// <summary>Where the search that failed happened — where the trap goes.</summary>
+        Vector3 lastSearchSpot;
+        bool trapLaidThisVisit;
+
+        float stunRemaining;
+
         public GrannyState State { get; private set; } = GrannyState.Patrol;
+
+        /// <summary>True while she is out of it and harmless.</summary>
+        public bool IsDown => State == GrannyState.Downed;
+
+        /// <summary>Seconds left before she gets back up. Zero when she is on her feet.</summary>
+        public float StunRemaining => Mathf.Max(0f, stunRemaining);
+
+        /// <summary>Raised when she goes down, and again when she gets back up elsewhere.</summary>
+        public event Action<bool> DownedChanged;
 
         /// <summary>Raised when she reaches the player. The day cycle listens.</summary>
         public event Action<GameObject> Caught;
@@ -70,6 +100,7 @@ namespace Granny.Gameplay.AI
         {
             agent = GetComponent<NavMeshAgent>();
             perception = GetComponent<GrannyPerception>();
+            trapSetter = GetComponent<TrapSetter>();
 
             if (patrolPoints.Count == 0) CollectPatrolPoints();
         }
@@ -80,6 +111,12 @@ namespace Granny.Gameplay.AI
         {
             stateTimer += Time.deltaTime;
 
+            if (State == GrannyState.Downed)
+            {
+                TickDowned();
+                return;
+            }
+
             ShoveDoorsInTheWay();
 
             switch (State)
@@ -87,6 +124,7 @@ namespace Granny.Gameplay.AI
                 case GrannyState.Patrol: TickPatrol(); break;
                 case GrannyState.Investigate: TickInvestigate(); break;
                 case GrannyState.Search: TickSearch(); break;
+                case GrannyState.SetTrap: TickSetTrap(); break;
                 case GrannyState.Chase: TickChase(); break;
                 case GrannyState.Catch: break;
             }
@@ -140,17 +178,138 @@ namespace Granny.Gameplay.AI
             var profile = perception.Difficulty;
             var duration = profile != null ? profile.SearchDuration : 6f;
 
-            if (searchingSpot != null && stateTimer > duration * 0.5f)
+            // She walks to the thing she means to open before she opens it — but
+            // only for as long as the search lasts, or a spot she cannot reach
+            // would keep her standing there all night.
+            if (searchingSpot != null && stateTimer < duration)
             {
-                // Opening the wardrobe is the moment the gamble pays off or does not.
+                var reach = Vector3.Distance(transform.position, searchingSpot.transform.position);
+                if (reach > catchRange + 0.6f)
+                {
+                    SetDestination(searchingSpot.transform.position);
+                    return;
+                }
+
+                // Within arm's length. Opening it is the moment the gamble pays
+                // off or does not: someone dragged out is standing in front of
+                // her with nowhere left to be.
+                var caught = searchingSpot.Occupant;
+
                 searchingSpot.ForceExit();
                 searchingSpot = null;
+                perception.TargetHidingSpot = null;
+
+                if (caught != null)
+                {
+                    perception.Suspect(caught.transform.position);
+                    Enter(GrannyState.Chase);
+                    return;
+                }
             }
 
             if (stateTimer < duration) return;
 
+            // Nobody here. She leaves something behind for whoever made the noise
+            // and goes back to her rounds.
+            lastSearchSpot = transform.position;
+            perception.Forget();
+
+            Enter(trapSetter != null ? GrannyState.SetTrap : GrannyState.Patrol);
+        }
+
+        void TickSetTrap()
+        {
+            if (perception.CanSeeTarget) { Enter(GrannyState.Chase); return; }
+
+            // A fresh noise elsewhere is worth more than finishing this.
+            if (perception.LastKnownPosition.HasValue) { Enter(GrannyState.Investigate); return; }
+
+            if (stateTimer < trapSetSeconds) return;
+
+            if (!trapLaidThisVisit)
+            {
+                trapLaidThisVisit = true;
+
+                var profile = perception.Difficulty;
+                if (profile != null) trapSetter.Limit = profile.TrapLimit;
+
+                trapSetter.Lay(lastSearchSpot);
+            }
+
+            Enter(GrannyState.Patrol);
+        }
+
+        /// <summary>
+        /// Put down, but never out.
+        ///
+        /// She is harmless while she is on the floor and then gets up somewhere
+        /// else entirely, which is what stops a dart from being an answer. It
+        /// buys a stretch of quiet to work in; it does not buy the house.
+        /// </summary>
+        void TickDowned()
+        {
+            stunRemaining -= Time.deltaTime;
+            if (stunRemaining > 0f) return;
+
+            GetUpSomewhereElse();
+        }
+
+        /// <summary>
+        /// Takes her off her feet for <paramref name="seconds"/>. Anything that
+        /// can reach her may call this — a dart, a gas canister, a falling shelf.
+        /// </summary>
+        public void Stun(float seconds)
+        {
+            if (seconds <= 0f) return;
+
+            stunRemaining = seconds;
+            if (State != GrannyState.Downed) Enter(GrannyState.Downed);
+        }
+
+        void GetUpSomewhereElse()
+        {
+            stunRemaining = 0f;
+
+            var spot = FarthestPointFromPlayer();
+            if (spot.HasValue && agent.isOnNavMesh) agent.Warp(spot.Value);
+
             perception.Forget();
             Enter(GrannyState.Patrol);
+        }
+
+        /// <summary>
+        /// A patrol marker a long way from the player — the farthest one past the
+        /// minimum, or simply the farthest if the house is too small to offer it.
+        /// </summary>
+        Vector3? FarthestPointFromPlayer()
+        {
+            if (patrolPoints.Count == 0) return null;
+
+            var player = perception.Target;
+            if (player == null) return patrolPoints[0].position;
+
+            Transform best = null;
+            var bestDistance = -1f;
+
+            foreach (var point in patrolPoints)
+            {
+                if (point == null) continue;
+
+                var distance = Vector3.Distance(point.position, player.position);
+                if (distance <= bestDistance) continue;
+
+                best = point;
+                bestDistance = distance;
+            }
+
+            if (best == null) return null;
+
+            if (bestDistance < respawnDistance)
+                Debug.LogWarning(
+                    $"[{nameof(GrannyBrain)}] Nowhere {respawnDistance} m from the player to get up; " +
+                    $"using {best.name} at {bestDistance:F1} m.", this);
+
+            return best.position;
         }
 
         void TickChase()
@@ -188,6 +347,8 @@ namespace Granny.Gameplay.AI
 
         void Enter(GrannyState next)
         {
+            var wasDown = IsDown;
+
             State = next;
             stateTimer = 0f;
 
@@ -210,7 +371,22 @@ namespace Granny.Gameplay.AI
                 searchingSpot = null;
             }
 
+            if (next == GrannyState.SetTrap)
+            {
+                agent.ResetPath();
+                trapLaidThisVisit = false;
+            }
+
             if (next == GrannyState.Catch) agent.ResetPath();
+
+            if (next == GrannyState.Downed)
+            {
+                if (agent.isOnNavMesh) agent.ResetPath();
+                agent.velocity = Vector3.zero;
+                searchingSpot = null;
+            }
+
+            if (wasDown != IsDown) DownedChanged?.Invoke(IsDown);
 
             StateChanged?.Invoke(next);
         }
@@ -246,8 +422,18 @@ namespace Granny.Gameplay.AI
             else door.SetOpen(true, gameObject);
         }
 
+        /// <summary>
+        /// Which hiding place, if any, this search opens.
+        ///
+        /// One she watched the player climb into is not a guess and is not
+        /// subject to the dice: she walks over and opens that one. Everything
+        /// else is the old behaviour — a chance she looks in whatever is nearest.
+        /// </summary>
         Interaction.HidingSpot FindHidingSpotToCheck()
         {
+            if (perception.TargetHidingSpot != null)
+                return perception.TargetHidingSpot;
+
             var profile = perception.Difficulty;
             var chance = profile != null ? profile.HidingSpotCheckChance : 0.5f;
 

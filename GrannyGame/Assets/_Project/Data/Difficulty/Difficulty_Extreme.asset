@@ -17,7 +17,6 @@ MonoBehaviour:
   patrolSpeed: 2.2
   investigateSpeed: 3.3
   chaseSpeed: 5.4
-  hearingScale: 1.9
   reactionDelay: 0.05
   sightRange: 22
   sightAngle: 150
@@ -25,3 +24,6 @@ MonoBehaviour:
   chaseMemory: 13
   searchDuration: 14
   hidingSpotCheckChance: 0.9
+  stunSeconds: 15
+  trapLimit: 4
+  creakyFloorShare: 1

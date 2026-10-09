@@ -12,8 +12,21 @@ namespace Granny.Gameplay.Interaction
     /// parked at <see cref="viewpoint"/> and their motor is disabled, so being
     /// found has nothing to do with collision.
     /// </summary>
+    /// <summary>How you get into a hiding place, which changes how it reads.</summary>
+    public enum HideStyle
+    {
+        /// <summary>A wardrobe or cabinet: you step in and pull the door to.</summary>
+        StepIn,
+
+        /// <summary>Under a bed: you go flat, and she has to kneel to reach you.</summary>
+        Crawl,
+    }
+
     public sealed class HidingSpot : MonoBehaviour, IInteractable
     {
+        [Header("Kind")]
+        [SerializeField] HideStyle style = HideStyle.StepIn;
+
         [Header("Placement")]
         [Tooltip("Where the player's eyes sit while hidden.")]
         [SerializeField] Transform viewpoint;
@@ -36,7 +49,11 @@ namespace Granny.Gameplay.Interaction
 
         public Transform Transform => transform;
 
-        public string Prompt => IsOccupied ? "Get out" : "Hide";
+        public HideStyle Style => style;
+
+        public string Prompt => IsOccupied
+            ? style == HideStyle.Crawl ? "Crawl out" : "Get out"
+            : style == HideStyle.Crawl ? "Hide under" : "Hide";
 
         void Awake()
         {

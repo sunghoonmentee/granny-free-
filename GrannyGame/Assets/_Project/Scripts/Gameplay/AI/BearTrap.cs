@@ -15,6 +15,11 @@ namespace Granny.Gameplay.AI
         [Header("Bite")]
         [SerializeField, Min(0.5f)] float holdSeconds = 4.5f;
 
+        [Header("Afterwards")]
+        [Tooltip("Speed multiplier while limping out of a sprung trap.")]
+        [SerializeField, Range(0.2f, 1f)] float limpFactor = 0.6f;
+        [SerializeField, Min(0f)] float limpSeconds = 20f;
+
         [Header("Freeing")]
         [Tooltip("Seconds shaved off by prying it open with a tool.")]
         [SerializeField, Min(0f)] float pryBonusSeconds = 3f;
@@ -51,7 +56,17 @@ namespace Granny.Gameplay.AI
             if (other.gameObject.layer != GameLayers.Player) return;
 
             var motor = other.GetComponentInParent<Player.PlayerMotor>();
-            if (motor == null) return;
+            if (motor == null)
+            {
+                // Anything else arriving under its own weight — a thrown bottle —
+                // sets it off harmlessly. Clearing a trap you have spotted is
+                // supposed to be possible, just never quiet.
+                if (other.attachedRigidbody != null &&
+                    other.attachedRigidbody.linearVelocity.sqrMagnitude > 1f)
+                    SpringEmpty(other.gameObject);
+
+                return;
+            }
 
             IsArmed = false;
             captive = motor.gameObject;
@@ -89,9 +104,26 @@ namespace Granny.Gameplay.AI
         void Release()
         {
             if (captive != null && captive.TryGetComponent<Player.PlayerMotor>(out var motor))
+            {
                 motor.enabled = true;
+                motor.Limp(limpFactor, limpSeconds);
+            }
 
             captive = null;
+        }
+
+        /// <summary>
+        /// Springs the trap without anyone in it — a bottle thrown at it from
+        /// down the corridor. Safe, and extremely loud, which is the trade.
+        /// </summary>
+        public bool SpringEmpty(GameObject cause)
+        {
+            if (!IsArmed || captive != null) return false;
+
+            IsArmed = false;
+            SetVisual(armed: false);
+            NoiseBus.Emit(transform.position, NoiseKind.Trap, cause);
+            return true;
         }
 
         void SetVisual(bool armed)
@@ -103,7 +135,12 @@ namespace Granny.Gameplay.AI
         /// <summary>Re-arms the trap at the start of a new day.</summary>
         public void Rearm()
         {
-            Release();
+            // Not Release(): waking up in bed must not start the day with a limp
+            // from a trap that is being reset anyway.
+            if (captive != null && captive.TryGetComponent<Player.PlayerMotor>(out var motor))
+                motor.enabled = true;
+
+            captive = null;
             IsArmed = true;
             SetVisual(armed: true);
         }

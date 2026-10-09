@@ -33,11 +33,16 @@ namespace Granny.UI
         [SerializeField] Image batteryFill;
         [SerializeField] CanvasGroup batteryGroup;
 
+        [Tooltip("Red at the edges of the view, from the third morning on.")]
+        [SerializeField] Image blood;
+
         [Header("Look")]
         [SerializeField] Color crosshairIdle = new(1f, 1f, 1f, 0.35f);
         [SerializeField] Color crosshairActive = new(1f, 0.9f, 0.55f, 0.95f);
         [SerializeField] Color staminaNormal = new(0.85f, 0.85f, 0.9f, 0.8f);
         [SerializeField] Color staminaExhausted = new(0.9f, 0.35f, 0.3f, 0.9f);
+
+        PlayerInjury injury;
 
         void Awake()
         {
@@ -48,13 +53,17 @@ namespace Granny.UI
                 if (inventory == null) inventory = player.GetComponentInChildren<PlayerInventory>();
                 if (motor == null) motor = player.GetComponentInChildren<PlayerMotor>();
                 if (flashlight == null) flashlight = player.GetComponentInChildren<PlayerFlashlight>(true);
+                injury = player.GetComponentInChildren<PlayerInjury>();
             }
+
+            ShowInjury(injury != null ? injury.Severity : 0f);
         }
 
         void OnEnable()
         {
             if (interactor != null) interactor.TargetChanged += OnTargetChanged;
             if (inventory != null) inventory.Changed += RefreshInventory;
+            if (injury != null) injury.SeverityChanged += ShowInjury;
 
             OnTargetChanged(interactor != null ? interactor.Target : null);
             RefreshInventory();
@@ -64,6 +73,20 @@ namespace Granny.UI
         {
             if (interactor != null) interactor.TargetChanged -= OnTargetChanged;
             if (inventory != null) inventory.Changed -= RefreshInventory;
+            if (injury != null) injury.SeverityChanged -= ShowInjury;
+        }
+
+        /// <summary>
+        /// How much of the view the injury takes. Nothing at all for the first
+        /// two mornings: an effect that is always on stops being information.
+        /// </summary>
+        void ShowInjury(float severity)
+        {
+            if (blood == null) return;
+
+            var colour = blood.color;
+            colour.a = Mathf.Clamp01((severity - 0.25f) / 0.75f) * 0.85f;
+            blood.color = colour;
         }
 
         void Update()

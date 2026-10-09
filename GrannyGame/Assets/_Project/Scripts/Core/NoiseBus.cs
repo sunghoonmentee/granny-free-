@@ -38,6 +38,12 @@ namespace Granny.Core
 
         /// <summary>Trying a locked door.</summary>
         LockedRattle,
+
+        /// <summary>A floorboard giving under someone's weight.</summary>
+        Creak,
+
+        /// <summary>A bell on a tripwire.</summary>
+        Bell,
     }
 
     /// <summary>One sound, somewhere in the house.</summary>
@@ -91,6 +97,8 @@ namespace Granny.Core
             NoiseKind.Breakage => true,
             NoiseKind.ToolWork => true,
             NoiseKind.Trap => true,
+            NoiseKind.Creak => true,
+            NoiseKind.Bell => true,
             NoiseKind.DoorMove => DoorMovementAudible,
             _ => false,
         };

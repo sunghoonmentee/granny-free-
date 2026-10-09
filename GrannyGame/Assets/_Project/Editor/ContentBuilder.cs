@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Granny.Core;
+using Granny.Gameplay.AI;
 using Granny.Gameplay.Interaction;
 using Granny.UI;
 using UnityEditor;
@@ -88,6 +89,25 @@ namespace Granny.EditorTools
 
             ("jar", "Preserve Jar", new[] { "throwable" },
                 new Color(0.55f, 0.48f, 0.22f), new Vector3(0.13f, 0.20f, 0.13f), 1.6f, true),
+
+            // The crossbow, in three trips. Each part takes the hand like
+            // anything else, which is what makes building it cost a night.
+            ("bow.stock", "Carved Stock", new[] { "bow_stock" },
+                new Color(0.42f, 0.30f, 0.18f), new Vector3(0.09f, 0.46f, 0.07f), 1.0f, false),
+
+            ("bow.limb", "Steel Limb", new[] { "bow_limb" },
+                new Color(0.45f, 0.46f, 0.50f), new Vector3(0.52f, 0.05f, 0.05f), 1.1f, false),
+
+            ("bow.cord", "Waxed Cord", new[] { "bow_cord" },
+                new Color(0.72f, 0.66f, 0.46f), new Vector3(0.10f, 0.10f, 0.10f), 0.3f, false),
+
+            ("crossbow", "Crossbow", new[] { "weapon" },
+                new Color(0.38f, 0.30f, 0.22f), new Vector3(0.44f, 0.12f, 0.50f), 1.4f, false),
+
+            // Darts are the exception to the one-hand rule: they go in a pocket,
+            // and they can be picked up again from wherever they landed.
+            ("dart", "Tranquilliser Dart", new[] { "dart" },
+                new Color(0.20f, 0.55f, 0.62f), new Vector3(0.03f, 0.03f, 0.26f), 0.2f, false),
         };
 
         static List<ItemDefinition> BuildItems()
@@ -164,6 +184,8 @@ namespace Granny.EditorTools
             public GameObject Drawer;
             public GameObject Door;
             public GameObject Wardrobe;
+            public GameObject BearTrap;
+            public GameObject Bed;
         }
 
         static Furniture BuildFurniture() => new()
@@ -171,7 +193,92 @@ namespace Granny.EditorTools
             Drawer = BuildDrawerPrefab(),
             Door = BuildDoorPrefab(),
             Wardrobe = BuildWardrobePrefab(),
+            BearTrap = BuildBearTrapPrefab(),
+            Bed = BuildBedPrefab(),
         };
+
+        /// <summary>
+        /// A bed with a gap under it.
+        ///
+        /// The frame is a solid prop and the gap is the hiding place, so the
+        /// player goes flat rather than standing inside the furniture. It is the
+        /// worse of the two places to hide — she only has to kneel — which is
+        /// what makes choosing the wardrobe mean something.
+        /// </summary>
+        static GameObject BuildBedPrefab()
+        {
+            var path = $"{PropPrefabDir}/Bed.prefab";
+            var frame = EnsureMaterial("PropBedFrame", new Color(0.21f, 0.15f, 0.11f));
+            var sheet = EnsureMaterial("PropBedSheet", new Color(0.46f, 0.43f, 0.38f));
+
+            var root = new GameObject("Bed");
+            root.layer = GameLayers.HidingSpot;
+
+            var legs = Box("Frame", root.transform, new Vector3(0f, 0.22f, 0f), new Vector3(1.3f, 0.12f, 2.1f), frame);
+            legs.layer = GameLayers.Prop;
+
+            var mattress = Box("Mattress", root.transform, new Vector3(0f, 0.44f, 0f), new Vector3(1.26f, 0.32f, 2.04f), sheet);
+            mattress.layer = GameLayers.HidingSpot;
+
+            var head = Box("Headboard", root.transform, new Vector3(0f, 0.65f, -1.05f), new Vector3(1.3f, 0.9f, 0.1f), frame);
+            head.layer = GameLayers.Prop;
+
+            // Flat on the floor under the frame, looking out along the room.
+            var viewpoint = new GameObject("Viewpoint").transform;
+            viewpoint.SetParent(root.transform, false);
+            viewpoint.localPosition = new Vector3(0f, -0.75f, 0f);
+
+            var exit = new GameObject("ExitPoint").transform;
+            exit.SetParent(root.transform, false);
+            exit.localPosition = new Vector3(1.1f, 0f, 0f);
+            exit.localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+            var spot = root.AddComponent<HidingSpot>();
+            Wire(spot, "viewpoint", viewpoint);
+            Wire(spot, "exitPoint", exit);
+            SetEnum(spot, "style", (int)HideStyle.Crawl);
+
+            return SavePrefab(root, path);
+        }
+
+        /// <summary>
+        /// The trap she leaves behind. Low and dark on purpose: it is meant to be
+        /// missable at a walk and obvious if you are looking at the floor, which
+        /// is the trade the player makes every time they hurry.
+        /// </summary>
+        static GameObject BuildBearTrapPrefab()
+        {
+            var path = $"{PropPrefabDir}/BearTrap.prefab";
+            var iron = EnsureMaterial("PropTrapIron", new Color(0.20f, 0.19f, 0.18f));
+            var sprung = EnsureMaterial("PropTrapSprung", new Color(0.30f, 0.26f, 0.22f));
+
+            var root = new GameObject("BearTrap");
+            root.layer = GameLayers.Prop;
+
+            var armed = new GameObject("Armed");
+            armed.transform.SetParent(root.transform, false);
+            Box("Jaws", armed.transform, new Vector3(0f, 0.06f, 0f), new Vector3(0.62f, 0.12f, 0.62f), iron);
+            Box("JawL", armed.transform, new Vector3(-0.30f, 0.20f, 0f), new Vector3(0.06f, 0.30f, 0.60f), iron);
+            Box("JawR", armed.transform, new Vector3(0.30f, 0.20f, 0f), new Vector3(0.06f, 0.30f, 0.60f), iron);
+
+            var closed = new GameObject("Sprung");
+            closed.transform.SetParent(root.transform, false);
+            Box("Shut", closed.transform, new Vector3(0f, 0.09f, 0f), new Vector3(0.62f, 0.18f, 0.28f), sprung);
+            closed.SetActive(false);
+
+            // The bite area, not the metal: a trigger, so walking into one is
+            // caught by the trap rather than blocked by it.
+            var trigger = root.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.center = new Vector3(0f, 0.25f, 0f);
+            trigger.size = new Vector3(0.75f, 0.5f, 0.75f);
+
+            var trap = root.AddComponent<BearTrap>();
+            Wire(trap, "armedVisual", armed);
+            Wire(trap, "sprungVisual", closed);
+
+            return SavePrefab(root, path);
+        }
 
         static GameObject BuildDrawerPrefab()
         {
@@ -320,6 +427,33 @@ namespace Granny.EditorTools
             Wire(hud, "batteryFill", batteryFill);
             Wire(hud, "batteryGroup", batteryGroup);
 
+            // Below the blackout so a fade to black still covers it, above
+            // everything else so the injury reads over the whole view.
+            var blood = MakeImage("Blood", root.transform, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            blood.sprite = BloodVignette();
+            blood.type = Image.Type.Simple;
+            blood.color = new Color(1f, 1f, 1f, 0f);
+
+            var bloodRect = blood.rectTransform;
+            bloodRect.anchorMin = Vector2.zero;
+            bloodRect.anchorMax = Vector2.one;
+            bloodRect.offsetMin = Vector2.zero;
+            bloodRect.offsetMax = Vector2.zero;
+
+            Wire(hud, "blood", blood);
+
+            var flash = MakeImage("ScareFlash", root.transform, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            flash.color = new Color(0.55f, 0.03f, 0.03f, 0f);
+
+            var flashRect = flash.rectTransform;
+            flashRect.anchorMin = Vector2.zero;
+            flashRect.anchorMax = Vector2.one;
+            flashRect.offsetMin = Vector2.zero;
+            flashRect.offsetMax = Vector2.zero;
+
+            var scare = root.AddComponent<Jumpscare>();
+            Wire(scare, "flash", flash);
+
             BuildDayOverlay(root, font);
 
             return SavePrefab(root, path);
@@ -366,6 +500,52 @@ namespace Granny.EditorTools
             Wire(overlay, "dayLabel", dayLabel);
             Wire(overlay, "verdictLabel", verdict);
             Wire(overlay, "dayGroup", dayGroup);
+        }
+
+        /// <summary>
+        /// The red at the edges on the last two mornings.
+        ///
+        /// Generated rather than painted, for the same reason the sounds are: it
+        /// keeps the project buildable from source. A radial falloff that is
+        /// clear in the middle and dark at the corners — it has to obscure the
+        /// edges of the view without ever hiding what the player is looking at.
+        /// </summary>
+        static Sprite BloodVignette()
+        {
+            const string path = "Assets/_Project/Art/Textures/BloodVignette.png";
+            const int size = 256;
+
+            if (!AssetDatabase.IsValidFolder("Assets/_Project/Art/Textures"))
+                AssetDatabase.CreateFolder("Assets/_Project/Art", "Textures");
+
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var centre = new Vector2(size * 0.5f, size * 0.5f);
+            var reach = size * 0.5f;
+
+            for (var y = 0; y < size; y++)
+            for (var x = 0; x < size; x++)
+            {
+                var distance = Vector2.Distance(new Vector2(x, y), centre) / reach;
+
+                // Nothing at all until well past halfway out, then quickly up.
+                var alpha = Mathf.Clamp01((distance - 0.55f) / 0.45f);
+                alpha = alpha * alpha;
+
+                texture.SetPixel(x, y, new Color(0.42f, 0.02f, 0.02f, alpha));
+            }
+
+            texture.Apply();
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            Object.DestroyImmediate(texture);
+
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.textureType = TextureImporterType.Sprite;
+            importer.alphaIsTransparency = true;
+            importer.SaveAndReimport();
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
         static Image MakeImage(string name, Transform parent, Vector2 anchor, Vector2 offset, Vector2 size)
@@ -512,6 +692,21 @@ namespace Granny.EditorTools
         }
 
         /// <summary>Assigns a private [SerializeField] without widening its API.</summary>
+        static void SetEnum(Object target, string fieldName, int value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(fieldName);
+
+            if (prop == null)
+            {
+                Debug.LogError($"[Content] {target.GetType().Name} has no field '{fieldName}'");
+                return;
+            }
+
+            prop.enumValueIndex = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         static void Wire(Object target, string fieldName, Object value)
         {
             var so = new SerializedObject(target);

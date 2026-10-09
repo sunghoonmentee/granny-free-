@@ -54,6 +54,9 @@ namespace Granny.Gameplay.Player
         bool crouching;
 
         /// <summary>Current stance and pace — the input to footstep noise.</summary>
+        float limpFactor = 1f;
+        float limpRemaining;
+
         public MoveState State { get; private set; } = MoveState.Idle;
 
         /// <summary>Horizontal speed in metres per second.</summary>
@@ -101,6 +104,7 @@ namespace Granny.Gameplay.Player
             var sprinting = stamina.Tick(dt, tryingToSprint);
 
             var targetSpeed = crouching ? crouchSpeed : sprinting ? sprintSpeed : walkSpeed;
+            targetSpeed *= LimpFactor(dt);
             var wish = transform.right * moveInput.x + transform.forward * moveInput.y;
             if (wish.sqrMagnitude > 1f) wish.Normalize();
 
@@ -172,6 +176,30 @@ namespace Granny.Gameplay.Player
         }
 
         /// <summary>Teleports the player, e.g. waking up in bed at the start of a day.</summary>
+        /// <summary>
+        /// Slows the player for a while — what a bear trap leaves behind.
+        ///
+        /// A limp cannot be shortened by sprinting it off or sitting it out, so
+        /// the cost of walking into a trap is paid in the only currency that
+        /// matters here: the time she gets to close the distance.
+        /// </summary>
+        public void Limp(float factor, float seconds)
+        {
+            limpFactor = Mathf.Clamp(factor, 0.1f, 1f);
+            limpRemaining = Mathf.Max(limpRemaining, seconds);
+        }
+
+        /// <summary>True while a trap is still being paid for.</summary>
+        public bool IsLimping => limpRemaining > 0f;
+
+        float LimpFactor(float dt)
+        {
+            if (limpRemaining <= 0f) return 1f;
+
+            limpRemaining -= dt;
+            return limpFactor;
+        }
+
         public void Warp(Vector3 position, float yawDegrees)
         {
             controller.enabled = false;
@@ -184,6 +212,7 @@ namespace Granny.Gameplay.Player
             currentHeight = standingHeight;
             ApplyHeight(standingHeight);
             stamina.Refill();
+            limpRemaining = 0f;
             State = MoveState.Idle;
         }
     }

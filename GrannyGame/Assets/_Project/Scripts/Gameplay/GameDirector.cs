@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Granny.Core;
 using Granny.Gameplay.AI;
 using Granny.Gameplay.Player;
@@ -122,7 +123,26 @@ namespace Granny.Gameplay
             if (granny != null) granny.Caught -= OnCaught;
         }
 
-        void Start() => DayStarted?.Invoke(days.Day);
+        void Start()
+        {
+            ArmTheHouse();
+            TellThePlayerWhatDayItIs(days.Day);
+            DayStarted?.Invoke(days.Day);
+        }
+
+        /// <summary>
+        /// Four nights of being caught show on the player, not in a number. The
+        /// director is the only thing that knows which morning this is, so it is
+        /// the only thing that can say.
+        /// </summary>
+        void TellThePlayerWhatDayItIs(int day)
+        {
+            var injury = player != null
+                ? player.GetComponentInChildren<PlayerInjury>()
+                : FindAnyObjectByType<PlayerInjury>();
+
+            if (injury != null) injury.SetDay(day);
+        }
 
         void OnCaught(GameObject who)
         {
@@ -184,13 +204,56 @@ namespace Granny.Gameplay
             if (granny != null && grannySpawn != null)
                 granny.ResetForNewDay(grannySpawn.position);
 
+            // Hers are picked up; the ones built into the house are reset where
+            // they stand. A night's worth of traps should not carry over, or by
+            // day four the house would be unplayable.
+            var setter = FindAnyObjectByType<TrapSetter>();
+            if (setter != null) setter.ClearAll();
+
             foreach (var trap in FindObjectsByType<BearTrap>(FindObjectsSortMode.None))
                 trap.Rearm();
+
+            ArmTheHouse();
+            TellThePlayerWhatDayItIs(days.Day);
 
             // The run is written when a day begins and at no other time. Saving on
             // demand would let a player undo every mistake, and the mistakes are
             // what the five days are for.
             SaveSystem.Save(Snapshot());
+        }
+
+        /// <summary>
+        /// Decides which of the house's floorboards creak, and resets the wires.
+        ///
+        /// The choice is made from each board's own position, not from a random
+        /// number, so a given difficulty always creaks in the same places. A
+        /// player who learns a quiet route keeps it; raising the difficulty takes
+        /// it away.
+        /// </summary>
+        void ArmTheHouse()
+        {
+            foreach (var bell in FindObjectsByType<Interaction.TripwireBell>(FindObjectsSortMode.None))
+                bell.Rearm();
+
+            var boards = FindObjectsByType<Interaction.CreakyFloor>(FindObjectsSortMode.None)
+                .OrderBy(board => PlacementKey(board.transform.position))
+                .ToList();
+
+            var share = difficulty != null ? difficulty.CreakyFloorShare : 0.4f;
+            var live = Mathf.RoundToInt(boards.Count * Mathf.Clamp01(share));
+
+            for (var i = 0; i < boards.Count; i++)
+                boards[i].SetArmed(i < live);
+        }
+
+        /// <summary>A stable, scattered ordering of positions — not a hash of the
+        /// object, which would change whenever the scene was rebuilt.</summary>
+        static int PlacementKey(Vector3 position)
+        {
+            var x = Mathf.RoundToInt(position.x * 10f);
+            var z = Mathf.RoundToInt(position.z * 10f);
+            var y = Mathf.RoundToInt(position.y * 10f);
+            return (x * 73856093) ^ (z * 19349663) ^ (y * 83492791);
         }
 
         /// <summary>Called by the front door once every lock is off.</summary>
