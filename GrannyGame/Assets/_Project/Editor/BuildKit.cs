@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -83,40 +84,75 @@ namespace Granny.EditorTools
         }
 
         /// <summary>
-        /// A floor slab, optionally with a rectangular hole cut for a stairwell.
-        /// The hole is made by emitting up to four boxes around it rather than by
-        /// mesh boolean work, which keeps every piece a clean box collider.
+        /// A floor slab with any number of rectangular holes cut in it: a
+        /// stairwell, a hall left open to the floor above, or both.
+        ///
+        /// The holes are cut by splitting the slab into a grid along their edges
+        /// and dropping the cells that fall inside one, rather than by mesh
+        /// boolean work. Every piece stays a clean box with a box collider, which
+        /// is what keeps the NavMesh bake and the physics honest.
         /// </summary>
         public static void Slab(Transform parent, string name, Rect area, float topY,
-            Material material, int layer, Rect? hole = null)
+            Material material, int layer, params Rect[] holes)
         {
             var centreY = topY - SlabThickness * 0.5f;
 
-            if (hole == null)
+            if (holes == null || holes.Length == 0)
             {
                 Box(parent, name, new Vector3(area.center.x, centreY, area.center.y),
                     new Vector3(area.width, SlabThickness, area.height), material, layer);
                 return;
             }
 
-            var h = hole.Value;
+            var xs = Edges(area.xMin, area.xMax, holes, horizontal: true);
+            var zs = Edges(area.yMin, area.yMax, holes, horizontal: false);
 
-            // South strip, north strip, then the two side strips between them.
-            if (h.yMin > area.yMin)
-                Box(parent, $"{name}_S", new Vector3(area.center.x, centreY, (area.yMin + h.yMin) * 0.5f),
-                    new Vector3(area.width, SlabThickness, h.yMin - area.yMin), material, layer);
+            var piece = 0;
 
-            if (h.yMax < area.yMax)
-                Box(parent, $"{name}_N", new Vector3(area.center.x, centreY, (h.yMax + area.yMax) * 0.5f),
-                    new Vector3(area.width, SlabThickness, area.yMax - h.yMax), material, layer);
+            for (var xi = 0; xi < xs.Count - 1; xi++)
+            for (var zi = 0; zi < zs.Count - 1; zi++)
+            {
+                var x0 = xs[xi];
+                var x1 = xs[xi + 1];
+                var z0 = zs[zi];
+                var z1 = zs[zi + 1];
 
-            if (h.xMin > area.xMin)
-                Box(parent, $"{name}_W", new Vector3((area.xMin + h.xMin) * 0.5f, centreY, h.center.y),
-                    new Vector3(h.xMin - area.xMin, SlabThickness, h.height), material, layer);
+                if (x1 - x0 < 0.01f || z1 - z0 < 0.01f) continue;
 
-            if (h.xMax < area.xMax)
-                Box(parent, $"{name}_E", new Vector3((h.xMax + area.xMax) * 0.5f, centreY, h.center.y),
-                    new Vector3(area.xMax - h.xMax, SlabThickness, h.height), material, layer);
+                var centre = new Vector2((x0 + x1) * 0.5f, (z0 + z1) * 0.5f);
+                if (InsideAny(centre, holes)) continue;
+
+                Box(parent, $"{name}_{piece++}",
+                    new Vector3(centre.x, centreY, centre.y),
+                    new Vector3(x1 - x0, SlabThickness, z1 - z0), material, layer);
+            }
+        }
+
+        /// <summary>The cut lines along one axis: the slab's own edges plus every hole's.</summary>
+        static List<float> Edges(float min, float max, Rect[] holes, bool horizontal)
+        {
+            var edges = new List<float> { min, max };
+
+            foreach (var hole in holes)
+            {
+                var low = horizontal ? hole.xMin : hole.yMin;
+                var high = horizontal ? hole.xMax : hole.yMax;
+
+                if (low > min && low < max) edges.Add(low);
+                if (high > min && high < max) edges.Add(high);
+            }
+
+            edges.Sort();
+            return edges;
+        }
+
+        static bool InsideAny(Vector2 point, Rect[] holes)
+        {
+            foreach (var hole in holes)
+                if (hole.Contains(point))
+                    return true;
+
+            return false;
         }
 
         /// <summary>
@@ -215,8 +251,16 @@ namespace Granny.EditorTools
         /// the flight arrives at clear. Without it the hole is simply a pit in the
         /// floor that the player walks into.
         /// </summary>
+        /// <summary>
+        /// A rail around a hole in a floor.
+        ///
+        /// The north side is left open by default, because that is where a flight
+        /// of stairs arrives and a rail across the top of one is a wall. A hole
+        /// that nothing arrives at — a hall left open to the floor above — wants
+        /// railing on all four sides instead.
+        /// </summary>
         public static void Railing(Transform parent, string name, Rect hole, float floorY,
-            Material material, int layer, float height = 1.0f)
+            Material material, int layer, float height = 1.0f, bool north = false)
         {
             const float thickness = 0.1f;
             var centreY = floorY + height * 0.5f;
@@ -229,6 +273,10 @@ namespace Granny.EditorTools
 
             Box(parent, $"{name}_S", new Vector3(hole.center.x, centreY, hole.yMin - thickness * 0.5f),
                 new Vector3(hole.width + thickness * 2f, height, thickness), material, layer);
+
+            if (north)
+                Box(parent, $"{name}_N", new Vector3(hole.center.x, centreY, hole.yMax + thickness * 0.5f),
+                    new Vector3(hole.width + thickness * 2f, height, thickness), material, layer);
         }
 
         static void Segment(Transform parent, string name, Vector3 start, Vector3 direction,

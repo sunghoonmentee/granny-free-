@@ -32,7 +32,7 @@ namespace Granny.EditorTools
         // The footprint. X runs west to east, Z runs south to north; the front
         // door is on the north wall, which is where the escape door gets built.
         static readonly Rect Footprint = new(-12f, -10f, 24f, 20f);
-        static readonly Rect AtticFootprint = new(-8f, -7f, 16f, 14f);
+        static readonly Rect AtticFootprint = new(-9f, -7f, 18f, 16f);
 
         const float BasementY = -BuildKit.FloorHeight;
         const float GroundY = 0f;
@@ -49,12 +49,35 @@ namespace Granny.EditorTools
         const float MainStairWidth = 2.6f;
         const float AtticStairWidth = 2.2f;
 
-        static readonly Rect BasementWell = new(7.45f, 1.5f, MainStairWidth, 6f);
-        static readonly Rect UpperWell = new(-10.05f, 1.5f, MainStairWidth, 6f);
+        // The cellar flight is in the parlour, the far south-west corner; the
+        // flight upstairs is in the stair hall on the east. Getting from the
+        // attic to the cellar crosses the whole house twice, which is what makes
+        // knowing where she is worth anything.
+        static readonly Rect BasementWell = new(-11f, -8f, MainStairWidth, 6f);
+        static readonly Rect UpperWell = new(6f, 1.5f, MainStairWidth, 6f);
 
         // Kept inside the attic's smaller footprint; a well hanging off the edge
         // would put the top of the flight outside the floor it arrives at.
-        static readonly Rect AtticWell = new(-6.35f, -6f, AtticStairWidth, 6f);
+        static readonly Rect AtticWell = new(-9.5f, 2f, AtticStairWidth, 6f);
+
+        /// <summary>
+        /// The hall, left open all the way to the first floor.
+        ///
+        /// This is the house's one vertical sightline and the reason the landing
+        /// is frightening: standing at the rail you can see the front door you
+        /// are working towards, and anything in the hall can see you leaning
+        /// over it. Cut out of the first floor's slab, not the ground's, and set
+        /// in far enough from the hall walls to leave a walkable ring all the way
+        /// round — a landing you can only reach one end of is a dead end.
+        /// </summary>
+        static readonly Rect HallVoid = new(-2.5f, 3f, 5f, 5.5f);
+
+        // The three lines every floor is divided on. Keeping them the same on
+        // each storey means rooms stack on rooms and walls land on walls rather
+        // than on open air.
+        const float HallWest = -4f;
+        const float HallEast = 4f;
+        const float CrossZ = 0f;
 
         [MenuItem("Granny/Build House", priority = 15)]
         public static void Run()
@@ -62,9 +85,14 @@ namespace Granny.EditorTools
             var scene = EditorSceneManager.OpenScene(HouseScenePath, OpenSceneMode.Single);
 
             foreach (var root in scene.GetRootGameObjects())
+                // Every root this builder creates has to be listed here. A root
+                // left off the list is not replaced on a rebuild, it is joined by
+                // a second copy — which is how a workbench from an older layout
+                // ended up standing on the cellar stairs, cutting the basement
+                // off from the rest of the house.
                 if (root.name is "Greybox" or "House" or "Furnishings" or "Navigation"
                     or "PatrolPoints" or "Bed" or "Lighting" or "Spawner" or "NoiseMakers"
-                    or "Audio")
+                    or "Audio" or "Workbench" or "Garage")
                     Object.DestroyImmediate(root);
 
             var palette = new Palette();
@@ -79,6 +107,7 @@ namespace Granny.EditorTools
             doorways.AddRange(BuildGround(house, palette));
             doorways.AddRange(BuildUpper(house, palette));
             BuildAttic(house, palette);
+            BuildGarage(house, palette);
             BuildStairs(house, palette);
 
             var furniture = Furnish(house, doorways);
@@ -127,35 +156,57 @@ namespace Granny.EditorTools
             floor.SetParent(parent, false);
 
             BuildKit.Slab(floor, "Slab", Footprint, BasementY, palette.Concrete, GameLayers.LevelGeometry);
-            Perimeter(floor, Footprint, BasementY, palette.Concrete);
 
-            // Cellar divider, with one doorway near the south end.
-            var doorways = BuildKit.Wall(floor, "Divider",
-                new Vector2(0f, Footprint.yMin), new Vector2(0f, Footprint.yMax),
-                BasementY, palette.Concrete, GameLayers.LevelGeometry, 4f);
+            // Three solid sides. The east wall is the one the garage is on the
+            // other side of, so it is pierced twice and built separately.
+            BuildKit.Wall(floor, "Wall_N", new Vector2(Footprint.xMin, Footprint.yMax),
+                new Vector2(Footprint.xMax, Footprint.yMax), BasementY, palette.Concrete,
+                GameLayers.LevelGeometry);
+            BuildKit.Wall(floor, "Wall_S", new Vector2(Footprint.xMin, Footprint.yMin),
+                new Vector2(Footprint.xMax, Footprint.yMin), BasementY, palette.Concrete,
+                GameLayers.LevelGeometry);
+            BuildKit.Wall(floor, "Wall_W", new Vector2(Footprint.xMin, Footprint.yMin),
+                new Vector2(Footprint.xMin, Footprint.yMax), BasementY, palette.Concrete,
+                GameLayers.LevelGeometry);
+
+            BuildBoilerRoomEastWall(floor, palette.Concrete);
+
+            // Store on the west, boiler room on the east. The flight from the
+            // parlour lands in the store, so the boiler is one room further in.
+            var doorways = BuildKit.Wall(floor, "Wall_Boiler",
+                new Vector2(4f, Footprint.yMin), new Vector2(4f, Footprint.yMax),
+                BasementY, palette.Concrete, GameLayers.LevelGeometry, 6f, 14f);
 
             BuildKit.Bulb(floor, "CellarBulb", new Vector3(-6f, BasementY + 2.7f, -4f),
                 new Color(1f, 0.80f, 0.55f), 3.2f, 13f);
             BuildKit.Bulb(floor, "CellarBulbN", new Vector3(-6f, BasementY + 2.7f, 5f),
                 new Color(1f, 0.80f, 0.55f), 2.6f, 12f);
-            BuildKit.Bulb(floor, "BoilerBulb", new Vector3(6f, BasementY + 2.7f, -5f),
+            BuildKit.Bulb(floor, "StoreBulb", new Vector3(0f, BasementY + 2.7f, 0f),
+                new Color(1f, 0.80f, 0.55f), 2.8f, 13f);
+            BuildKit.Bulb(floor, "BoilerBulb", new Vector3(8f, BasementY + 2.7f, -5f),
                 new Color(0.95f, 0.65f, 0.5f), 2.8f, 12f);
-            BuildKit.Bulb(floor, "StairBulb", new Vector3(BasementWell.center.x, BasementY + 2.7f, 4f),
+            BuildKit.Bulb(floor, "BoilerBulbN", new Vector3(8f, BasementY + 2.7f, 5f),
+                new Color(0.95f, 0.65f, 0.5f), 2.4f, 11f);
+            BuildKit.Bulb(floor, "StairBulb", new Vector3(BasementWell.center.x, BasementY + 2.7f, -5f),
                 new Color(1f, 0.85f, 0.6f), 2.4f, 10f);
 
             return doorways;
         }
 
         /// <summary>
-        /// Ground floor: entrance hall on the north, living room west, kitchen
-        /// south-east. The front door is visible from the hall, so the player can
-        /// always see how far they are from the thing they are working towards.
+        /// Ground floor: the hall runs up the middle from the front door, with a
+        /// room in each corner off it.
+        ///
+        /// The front door is visible the moment you reach the hall, from down
+        /// here and from the landing above — so the player can always see how far
+        /// they are from the thing they are working towards, and so can she.
         /// </summary>
         static BuildKit.Doorway[] BuildGround(Transform parent, Palette palette)
         {
             var floor = new GameObject("Ground").transform;
             floor.SetParent(parent, false);
 
+            // The cellar flight drops out of the parlour floor, in the far corner.
             BuildKit.Slab(floor, "Slab", Footprint, GroundY, palette.Floor,
                 GameLayers.LevelGeometry, BasementWell);
 
@@ -182,28 +233,42 @@ namespace Granny.EditorTools
                 new Vector2(Footprint.xMax, Footprint.yMin), new Vector2(Footprint.xMax, Footprint.yMax),
                 GroundY, palette.Wall, GameLayers.LevelGeometry);
 
-            // Hall / living room divider.
-            var hallDoors = BuildKit.Wall(floor, "Wall_Hall",
-                new Vector2(-4f, Footprint.yMin), new Vector2(-4f, 4f),
-                GroundY, palette.Interior, GameLayers.LevelGeometry, 3f, 11f);
+            // The two walls that turn the middle of the house into a corridor.
+            // Their doorways sit well away from z = 0, where the cross wall meets
+            // them: an opening filled by the end of another wall is exactly the
+            // bug that once left a door hanging in mid-air.
+            var westDoors = BuildKit.Wall(floor, "Wall_HallW",
+                new Vector2(HallWest, Footprint.yMin), new Vector2(HallWest, Footprint.yMax),
+                GroundY, palette.Interior, GameLayers.LevelGeometry, 5f, 16f);
 
-            // Kitchen divider.
-            var kitchenDoors = BuildKit.Wall(floor, "Wall_Kitchen",
-                new Vector2(-4f, -2f), new Vector2(Footprint.xMax, -2f),
-                GroundY, palette.Interior, GameLayers.LevelGeometry, 5f, 13f);
+            var eastDoors = BuildKit.Wall(floor, "Wall_HallE",
+                new Vector2(HallEast, Footprint.yMin), new Vector2(HallEast, Footprint.yMax),
+                GroundY, palette.Interior, GameLayers.LevelGeometry, 5f, 16f);
 
-            BuildKit.Bulb(floor, "HallBulb", new Vector3(2f, GroundY + 2.8f, 6f),
+            // The cross wall separates the four corner rooms. Its middle opening
+            // is the hall carrying on south; the outer two join kitchen to
+            // parlour and the stair hall to the living room.
+            var crossDoors = BuildKit.Wall(floor, "Wall_Cross",
+                new Vector2(Footprint.xMin, CrossZ), new Vector2(Footprint.xMax, CrossZ),
+                GroundY, palette.Interior, GameLayers.LevelGeometry, 5f, 12f, 19f);
+
+            BuildKit.Bulb(floor, "HallBulb", new Vector3(0f, GroundY + 2.8f, 7f),
                 new Color(1f, 0.86f, 0.62f), 3.6f, 14f);
-            BuildKit.Bulb(floor, "LivingBulbN", new Vector3(-8f, GroundY + 2.8f, 4f),
+            BuildKit.Bulb(floor, "HallBulbS", new Vector3(0f, GroundY + 2.8f, -5f),
+                new Color(1f, 0.86f, 0.62f), 3.0f, 13f);
+            BuildKit.Bulb(floor, "KitchenBulb", new Vector3(-7.5f, GroundY + 2.8f, 6f),
+                new Color(0.96f, 0.93f, 0.82f), 3.2f, 14f);
+            BuildKit.Bulb(floor, "ParlourBulb", new Vector3(-7.5f, GroundY + 2.8f, -5f),
                 new Color(1f, 0.82f, 0.58f), 3.0f, 13f);
-            BuildKit.Bulb(floor, "LivingBulbS", new Vector3(-8f, GroundY + 2.8f, -6f),
-                new Color(1f, 0.82f, 0.58f), 3.0f, 13f);
-            BuildKit.Bulb(floor, "KitchenBulb", new Vector3(6f, GroundY + 2.8f, -6f),
-                new Color(0.96f, 0.93f, 0.82f), 3.0f, 13f);
+            BuildKit.Bulb(floor, "StairHallBulb", new Vector3(8f, GroundY + 2.8f, 6f),
+                new Color(1f, 0.85f, 0.6f), 3.0f, 13f);
+            BuildKit.Bulb(floor, "LivingBulb", new Vector3(7.5f, GroundY + 2.8f, -5f),
+                new Color(1f, 0.82f, 0.58f), 3.2f, 14f);
 
             var doorways = new List<BuildKit.Doorway>();
-            doorways.AddRange(hallDoors);
-            doorways.AddRange(kitchenDoors);
+            doorways.AddRange(westDoors);
+            doorways.AddRange(eastDoors);
+            doorways.AddRange(crossDoors);
             return doorways.ToArray();
         }
 
@@ -216,38 +281,55 @@ namespace Granny.EditorTools
             var floor = new GameObject("Upper").transform;
             floor.SetParent(parent, false);
 
+            // Two holes: the stairwell, and the hall left open below.
             BuildKit.Slab(floor, "Slab", Footprint, UpperY, palette.Floor,
-                GameLayers.LevelGeometry, UpperWell);
+                GameLayers.LevelGeometry, UpperWell, HallVoid);
 
             BuildKit.Railing(floor, "StairRail", UpperWell, UpperY,
                 palette.Stair, GameLayers.LevelGeometry);
 
+            // The rail around the open hall — all four sides, because nothing
+            // arrives at this hole; you walk the whole way round it. This is the
+            // house's one vertical sightline: from here you can see the front
+            // door, and anything in the hall can see you leaning over it.
+            BuildKit.Railing(floor, "HallRail", HallVoid, UpperY,
+                palette.Stair, GameLayers.LevelGeometry, north: true);
+
             Perimeter(floor, Footprint, UpperY, palette.Wall);
 
-            // Landing runs east-west, with one door into each bedroom. There used
-            // to be a third opening in the middle, at x = 1 - which is exactly
-            // where the wall dividing the two bedrooms meets this one, so the
-            // doorway was filled by the end of another wall.
-            var landingDoors = BuildKit.Wall(floor, "Wall_Landing",
-                new Vector2(Footprint.xMin, 1f), new Vector2(Footprint.xMax, 1f),
-                UpperY, palette.Interior, GameLayers.LevelGeometry, 5f, 20f);
+            // Same three lines as the floor below, so rooms stack on rooms and
+            // walls land on walls rather than on open air.
+            var westDoors = BuildKit.Wall(floor, "Wall_HallW",
+                new Vector2(HallWest, Footprint.yMin), new Vector2(HallWest, Footprint.yMax),
+                UpperY, palette.Interior, GameLayers.LevelGeometry, 5f, 16f);
 
-            var bedroomDoors = BuildKit.Wall(floor, "Wall_Bedrooms",
-                new Vector2(1f, Footprint.yMin), new Vector2(1f, 1f),
-                UpperY, palette.Interior, GameLayers.LevelGeometry, 7f);
+            var eastDoors = BuildKit.Wall(floor, "Wall_HallE",
+                new Vector2(HallEast, Footprint.yMin), new Vector2(HallEast, Footprint.yMax),
+                UpperY, palette.Interior, GameLayers.LevelGeometry, 5f, 16f);
 
-            BuildKit.Bulb(floor, "LandingBulb", new Vector3(-2f, UpperY + 2.8f, 5f),
+            // No middle opening up here: the hall void is in the way of it, and a
+            // doorway over a hole is a doorway onto a drop.
+            var crossDoors = BuildKit.Wall(floor, "Wall_Cross",
+                new Vector2(Footprint.xMin, CrossZ), new Vector2(Footprint.xMax, CrossZ),
+                UpperY, palette.Interior, GameLayers.LevelGeometry, 5f, 12f, 19f);
+
+            BuildKit.Bulb(floor, "LandingBulb", new Vector3(0f, UpperY + 2.8f, 0.8f),
                 new Color(1f, 0.83f, 0.6f), 3.4f, 14f);
-            BuildKit.Bulb(floor, "LandingBulbE", new Vector3(7f, UpperY + 2.8f, 5f),
-                new Color(1f, 0.83f, 0.6f), 2.8f, 12f);
-            BuildKit.Bulb(floor, "BedroomBulb", new Vector3(6f, UpperY + 2.8f, -6f),
-                new Color(0.96f, 0.80f, 0.62f), 2.8f, 12f);
-            BuildKit.Bulb(floor, "BedroomBulbW", new Vector3(-6f, UpperY + 2.8f, -6f),
-                new Color(0.96f, 0.80f, 0.62f), 2.8f, 12f);
+            BuildKit.Bulb(floor, "StairTopBulb", new Vector3(UpperWell.center.x, UpperY + 2.8f, 0.5f),
+                new Color(1f, 0.85f, 0.6f), 2.8f, 12f);
+            BuildKit.Bulb(floor, "ChildBulb", new Vector3(-7.5f, UpperY + 2.8f, 6f),
+                new Color(0.92f, 0.86f, 0.74f), 3.0f, 13f);
+            BuildKit.Bulb(floor, "BathBulb", new Vector3(-7.5f, UpperY + 2.8f, -5f),
+                new Color(0.88f, 0.92f, 0.95f), 2.8f, 12f);
+            BuildKit.Bulb(floor, "AgataBulb", new Vector3(7.5f, UpperY + 2.8f, 6f),
+                new Color(0.96f, 0.72f, 0.52f), 2.8f, 13f);
+            BuildKit.Bulb(floor, "GuestBulb", new Vector3(7.5f, UpperY + 2.8f, -6f),
+                new Color(0.96f, 0.80f, 0.62f), 3.0f, 13f);
 
             var doorways = new List<BuildKit.Doorway>();
-            doorways.AddRange(landingDoors);
-            doorways.AddRange(bedroomDoors);
+            doorways.AddRange(westDoors);
+            doorways.AddRange(eastDoors);
+            doorways.AddRange(crossDoors);
             return doorways.ToArray();
         }
 
@@ -353,19 +435,21 @@ namespace Granny.EditorTools
         // both the "map looks wrong" and part of the "I keep bumping into things".
         static readonly Placement[] Dressers =
         {
-            new(-11.55f, BasementY, -6f, 90f),
-            new(11.55f, BasementY, -7f, -90f),
-            new(-11.55f, GroundY, -7f, 90f),
-            new(11.55f, GroundY, -7f, -90f),
-            new(-11.55f, UpperY, -7f, 90f),
-            new(0f, AtticY, 6.6f, 180f),
+            new(-11.55f, BasementY, 5f, 90f),      // cellar store, clear of the flight
+            new(11.55f, BasementY, -7f, -90f),     // boiler room
+            new(-11.55f, GroundY, 6f, 90f),        // kitchen
+            new(11.55f, GroundY, -6f, -90f),       // living room
+            new(-11.55f, UpperY, -6f, 90f),        // bathroom
+            new(11.55f, UpperY, 6f, -90f),         // her room
+            new(0f, AtticY, 5.6f, 180f),
         };
 
         static readonly Placement[] Wardrobes =
         {
-            new(-11.42f, GroundY, -4f, 90f),
-            new(11.42f, UpperY, -3f, -90f),
-            new(5.5f, AtticY, 6.42f, 180f),
+            new(-11.42f, GroundY, -5f, 90f),       // parlour
+            new(11.42f, UpperY, -5f, -90f),        // guest room
+            new(-11.42f, UpperY, 7f, 90f),         // the child's room
+            new(4.5f, AtticY, 6.4f, 180f),
         };
 
         /// <summary>
@@ -378,9 +462,9 @@ namespace Granny.EditorTools
         /// </summary>
         static readonly Placement[] Beds =
         {
-            new(7f, UpperY, -7f, 315f),     // the guest room, where the day starts
-            new(-9f, UpperY, -6f, 90f),     // the far bedroom
-            new(9.5f, GroundY, -7.5f, 0f),  // the back room downstairs
+            new(8f, UpperY, -6f, 270f),     // the guest room, where the day starts
+            new(0f, UpperY, -6.5f, 0f),     // her room, off the landing
+            new(-5.6f, UpperY, 7f, 270f),   // the child's room, clear of the attic flight
         };
 
         sealed class Furniture
@@ -454,14 +538,17 @@ namespace Granny.EditorTools
         /// </summary>
         static readonly Vector3[] PatrolPositions =
         {
-            new(-7f, GroundY, 6f),
-            new(6f, GroundY, 6f),
-            new(-8f, GroundY, -6f),
-            new(6f, GroundY, -6f),
-            new(-5f, UpperY, 5f),
-            new(6f, UpperY, -6f),
-            new(-6f, BasementY, -5f),
-            new(6f, BasementY, -5f),
+            new(0f, GroundY, 7f),           // the hall, under the open ceiling
+            new(-8f, GroundY, 6f),          // kitchen
+            new(-8f, GroundY, -5f),         // parlour
+            new(8f, GroundY, 6f),           // stair hall
+            new(8f, GroundY, -5f),          // living room
+            new(0f, UpperY, 1.5f),          // the landing, at the rail
+            new(8f, UpperY, -6f),           // guest room
+            new(-8f, UpperY, 6f),           // the child's room
+            new(-6f, BasementY, -5f),       // cellar store
+            new(8f, BasementY, 4f),         // boiler room
+            new(22f, BasementY, 2f),        // the garage, by the passage
             new(0f, AtticY, 0f),
         };
 
@@ -479,19 +566,19 @@ namespace Granny.EditorTools
         /// </summary>
         static readonly Vector3[] CreakyBoards =
         {
-            new(1.2f, BasementY, -4.8f),    // cellar, mid-floor
-            new(5.0f, BasementY, -0.8f),    // cellar, approaching the stairs
-            new(7.2f, GroundY, 7.9f),       // top of the cellar stairs
-            new(2.45f, GroundY, 5.1f),      // hall, crossing east to west
-            new(-2.2f, GroundY, 2.3f),      // middle of the ground floor
-            new(-6.8f, GroundY, 1.8f),      // foot of the stairs up
-            new(-5.1f, UpperY, 7.0f),       // head of the stairs up
-            new(0f, UpperY, 4.8f),          // landing
-            new(5.1f, UpperY, 2.5f),        // outside the bedrooms
+            new(-6f, BasementY, -4f),       // cellar, mid-floor
+            new(2f, BasementY, 0f),         // cellar, the doorway to the boiler
+            new(-9.7f, GroundY, -1f),       // head of the cellar stairs
+            new(-7f, GroundY, 0f),          // parlour into the kitchen
+            new(0f, GroundY, 2f),           // the hall, crossing the house
+            new(7.3f, GroundY, 0.8f),       // foot of the stairs up
+            new(7.3f, UpperY, 8.4f),        // head of the stairs up
+            new(0f, UpperY, 1.5f),          // the landing, at the rail
+            new(-3.3f, UpperY, 6f),         // the landing, its west side
         };
 
         /// <summary>In the hall, on the last stretch before the front door.</summary>
-        static readonly Vector3 TripwirePosition = new(0f, GroundY, 8.2f);
+        static readonly Vector3 TripwirePosition = new(0f, GroundY, 9.1f);
 
         /// <summary>
         /// Where she puts a trap when a search comes up empty.
@@ -503,15 +590,17 @@ namespace Granny.EditorTools
         /// </summary>
         static readonly Vector3[] TrapSpots =
         {
-            new(5.0f, BasementY, -0.8f),    // cellar, at the foot of the stairs
-            new(-6.0f, BasementY, -5.0f),   // cellar, the far end
-            new(7.2f, GroundY, 7.9f),       // head of the cellar stairs
-            new(-6.8f, GroundY, 1.8f),      // foot of the stairs up
-            new(0f, GroundY, 6.5f),         // hall, in front of the door
-            new(-2.2f, GroundY, 2.3f),      // the middle of the ground floor
-            new(-5.1f, UpperY, 7.0f),       // head of the stairs up
-            new(0f, UpperY, 4.8f),          // the landing
-            new(5.1f, UpperY, 2.5f),        // outside the bedrooms
+            new(-9.7f, BasementY, -1.5f),   // cellar, at the foot of the stairs
+            new(2f, BasementY, 0f),         // cellar, the boiler doorway
+            new(13.9f, BasementY, 2.3f),    // the passage out to the garage
+            new(-9.7f, GroundY, -1f),       // head of the cellar stairs
+            new(-7f, GroundY, 0f),          // between kitchen and parlour
+            new(0f, GroundY, 8f),           // the hall, in front of the door
+            new(0f, GroundY, 0.5f),         // the hall, at the cross doorway
+            new(7.3f, GroundY, 0.8f),       // foot of the stairs up
+            new(7.3f, UpperY, 8.4f),        // head of the stairs up
+            new(0f, UpperY, 1.5f),          // the landing
+            new(7f, UpperY, 0.5f),          // outside the guest room
         };
 
         static void BuildNoiseMakers()
@@ -562,14 +651,171 @@ namespace Granny.EditorTools
                 $"{TrapSpots.Length} trap spots placed");
         }
 
+        // ------------------------------------------------------------------
+        // The garage, and the one way into it she cannot follow
+        // ------------------------------------------------------------------
+
+        /// <summary>The garage floor, level with the cellar: the house is on a slope.</summary>
+        static readonly Rect Garage = new(16f, -7f, 14f, 12f);
+
+        /// <summary>The ordinary way through, which she can use like anyone else.</summary>
+        static readonly Rect Passage = new(12f, 1f, 4f, 2.6f);
+
         /// <summary>
-        /// The workbench, in the cellar — the furthest point from everything, so
+        /// The crawl.
+        ///
+        /// A metre and a fifth of headroom, which is the whole mechanic: she is
+        /// 1.9 m to the NavMesh bake, so no walkable surface is generated in here
+        /// at all and she cannot path through it however much she wants to. A
+        /// crouched player is 1.05 m and fits. Nothing is flagged, nothing is
+        /// special-cased — it is simply too low for her, the way a cat flap is.
+        /// </summary>
+        static readonly Rect Crawl = new(12f, -5f, 4f, 1.4f);
+
+        const float CrawlHeight = 1.2f;
+
+        /// <summary>
+        /// The cellar side of the same two openings, so the passage and the crawl
+        /// go through both walls rather than into one.
+        /// </summary>
+        static void BuildBoilerRoomEastWall(Transform parent, Material material)
+        {
+            var spans = new[]
+            {
+                (Footprint.yMin, Crawl.yMin),
+                (Crawl.yMax, Passage.yMin),
+                (Passage.yMax, Footprint.yMax),
+            };
+
+            for (var i = 0; i < spans.Length; i++)
+            {
+                var (from, to) = spans[i];
+                if (to - from < 0.05f) continue;
+
+                BuildKit.Wall(parent, $"Wall_E_{i}", new Vector2(Footprint.xMax, from),
+                    new Vector2(Footprint.xMax, to), BasementY, material, GameLayers.LevelGeometry);
+            }
+
+            var lintelHeight = BuildKit.FloorHeight - BuildKit.SlabThickness - CrawlHeight;
+            BuildKit.Box(parent, "Wall_E_CrawlLintel",
+                new Vector3(Footprint.xMax, BasementY + CrawlHeight + lintelHeight * 0.5f, Crawl.center.y),
+                new Vector3(BuildKit.WallThickness, lintelHeight, Crawl.height),
+                material, GameLayers.LevelGeometry);
+        }
+
+        static void BuildGarage(Transform parent, Palette palette)
+        {
+            var garage = new GameObject("Garage").transform;
+            garage.SetParent(parent, false);
+
+            var concrete = palette.Concrete;
+
+            BuildKit.Slab(garage, "Slab", Garage, BasementY, concrete, GameLayers.LevelGeometry);
+            BuildKit.Slab(garage, "Roof", Garage, BasementY + BuildKit.FloorHeight,
+                palette.Ceiling, GameLayers.LevelGeometry);
+
+            // Three solid sides; the west wall is pierced twice, once for each
+            // way in, and the shutter goes in the south wall in R4.
+            BuildKit.Wall(garage, "Wall_N", new Vector2(Garage.xMin, Garage.yMax),
+                new Vector2(Garage.xMax, Garage.yMax), BasementY, concrete, GameLayers.LevelGeometry);
+            BuildKit.Wall(garage, "Wall_S", new Vector2(Garage.xMin, Garage.yMin),
+                new Vector2(Garage.xMax, Garage.yMin), BasementY, concrete, GameLayers.LevelGeometry);
+            BuildKit.Wall(garage, "Wall_E", new Vector2(Garage.xMax, Garage.yMin),
+                new Vector2(Garage.xMax, Garage.yMax), BasementY, concrete, GameLayers.LevelGeometry);
+
+            // The west wall, with the passage and the crawl cut out of it. Both
+            // openings are left by splitting the wall into the spans between them
+            // rather than by a doorway, because a crawl hole is not a door.
+            WestWallWithTwoWaysThrough(garage, concrete);
+
+            BuildPassage(garage, concrete);
+            BuildCrawl(garage, concrete);
+
+            BuildKit.Bulb(garage, "GarageBulb", new Vector3(23f, BasementY + 2.7f, -1f),
+                new Color(0.92f, 0.90f, 0.80f), 3.4f, 16f);
+            BuildKit.Bulb(garage, "GarageBulbS", new Vector3(19f, BasementY + 2.7f, -5f),
+                new Color(0.92f, 0.90f, 0.80f), 2.6f, 12f);
+            BuildKit.Bulb(garage, "CrawlBulb", new Vector3(14f, BasementY + 0.9f, -4.3f),
+                new Color(0.80f, 0.74f, 0.60f), 1.1f, 6f);
+        }
+
+        /// <summary>
+        /// The garage side of the two ways in: wall everywhere except where the
+        /// passage and the crawl come through.
+        /// </summary>
+        static void WestWallWithTwoWaysThrough(Transform parent, Material material)
+        {
+            var spans = new[]
+            {
+                (Garage.yMin, Crawl.yMin),
+                (Crawl.yMax, Passage.yMin),
+                (Passage.yMax, Garage.yMax),
+            };
+
+            for (var i = 0; i < spans.Length; i++)
+            {
+                var (from, to) = spans[i];
+                if (to - from < 0.05f) continue;
+
+                BuildKit.Wall(parent, $"Wall_W_{i}", new Vector2(Garage.xMin, from),
+                    new Vector2(Garage.xMin, to), BasementY, material, GameLayers.LevelGeometry);
+            }
+
+            // A lintel over the crawl, so the hole is crawl-height rather than
+            // floor-to-ceiling.
+            var lintelHeight = BuildKit.FloorHeight - BuildKit.SlabThickness - CrawlHeight;
+            BuildKit.Box(parent, "Wall_W_CrawlLintel",
+                new Vector3(Garage.xMin, BasementY + CrawlHeight + lintelHeight * 0.5f, Crawl.center.y),
+                new Vector3(BuildKit.WallThickness, lintelHeight, Crawl.height),
+                material, GameLayers.LevelGeometry);
+        }
+
+        /// <summary>The corridor between the boiler room and the garage.</summary>
+        static void BuildPassage(Transform parent, Material material)
+        {
+            BuildKit.Slab(parent, "PassageFloor", Passage, BasementY, material, GameLayers.LevelGeometry);
+            BuildKit.Slab(parent, "PassageRoof", Passage, BasementY + BuildKit.FloorHeight,
+                material, GameLayers.LevelGeometry);
+
+            BuildKit.Wall(parent, "PassageWall_N", new Vector2(Passage.xMin, Passage.yMax),
+                new Vector2(Passage.xMax, Passage.yMax), BasementY, material, GameLayers.LevelGeometry);
+            BuildKit.Wall(parent, "PassageWall_S", new Vector2(Passage.xMin, Passage.yMin),
+                new Vector2(Passage.xMax, Passage.yMin), BasementY, material, GameLayers.LevelGeometry);
+        }
+
+        /// <summary>
+        /// The crawl: a floor, two cheeks and a ceiling at shoulder height. It is
+        /// the ceiling that does the work.
+        /// </summary>
+        static void BuildCrawl(Transform parent, Material material)
+        {
+            BuildKit.Slab(parent, "CrawlFloor", Crawl, BasementY, material, GameLayers.LevelGeometry);
+
+            BuildKit.Box(parent, "CrawlRoof",
+                new Vector3(Crawl.center.x, BasementY + CrawlHeight + BuildKit.SlabThickness * 0.5f,
+                    Crawl.center.y),
+                new Vector3(Crawl.width, BuildKit.SlabThickness, Crawl.height + BuildKit.WallThickness * 2f),
+                material, GameLayers.LevelGeometry);
+
+            foreach (var (name, z) in new[]
+                     {
+                         ("CrawlWall_N", Crawl.yMax + BuildKit.WallThickness * 0.5f),
+                         ("CrawlWall_S", Crawl.yMin - BuildKit.WallThickness * 0.5f),
+                     })
+                BuildKit.Box(parent, name,
+                    new Vector3(Crawl.center.x, BasementY + CrawlHeight * 0.5f, z),
+                    new Vector3(Crawl.width, CrawlHeight, BuildKit.WallThickness),
+                    material, GameLayers.LevelGeometry);
+        }
+
+        /// <summary>
+        /// The workbench, in the garage — the furthest point from everything, so
         /// each of the three parts is a full crossing of the house.
         /// </summary>
         static void BuildWorkbench()
         {
             var bench = new GameObject("Workbench");
-            bench.transform.position = new Vector3(-9.5f, BasementY, -7f);
+            bench.transform.position = new Vector3(27f, BasementY, 3f);
 
             BuildKit.Box(bench.transform, "Top",
                 new Vector3(0f, 0.85f, 0f), new Vector3(2.0f, 0.1f, 0.8f),
@@ -645,13 +891,13 @@ namespace Granny.EditorTools
 
             // Granny starts in the cellar, so day one begins with her a long way
             // from the player and the first noise is the player's own.
-            BuildKit.Marker(root, "GrannySpawn", new Vector3(-6f, BasementY, -3f), 0f);
+            BuildKit.Marker(root, "GrannySpawn", new Vector3(-6f, BasementY, -5f), 0f);
 
             // The player wakes in the south-east bedroom, the furthest room from
             // the front door: every morning starts with the walk down.
             var bed = new GameObject("Bed");
-            bed.transform.SetPositionAndRotation(new Vector3(7f, UpperY + 0.1f, -7f),
-                Quaternion.Euler(0f, 315f, 0f));
+            bed.transform.SetPositionAndRotation(new Vector3(8f, UpperY + 0.1f, -6f),
+                Quaternion.Euler(0f, 270f, 0f));
         }
 
         static void BuildSpawner(Furniture furniture)
@@ -752,7 +998,7 @@ namespace Granny.EditorTools
             }
 
             player.transform.SetPositionAndRotation(
-                new Vector3(7f, UpperY + 0.15f, -7f), Quaternion.Euler(0f, 315f, 0f));
+                new Vector3(8f, UpperY + 0.15f, -6f), Quaternion.Euler(0f, 270f, 0f));
         }
     }
 }

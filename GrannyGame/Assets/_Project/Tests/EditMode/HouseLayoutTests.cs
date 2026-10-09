@@ -2,6 +2,7 @@ using System.Linq;
 using Granny.Core;
 using Granny.Gameplay;
 using Granny.Gameplay.Interaction;
+using Granny.Gameplay.Player;
 using NUnit.Framework;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -220,6 +221,110 @@ namespace Granny.Tests
                 Assert.AreEqual(NavMeshPathStatus.PathComplete, path.status,
                     $"She cannot reach {name}. A door is too narrow, or a floor is cut off.");
             }
+        }
+
+        /// <summary>
+        /// Rebuilding the house has to replace what it built last time, not add
+        /// to it. A root left off the builder's cleanup list is not noticed as a
+        /// missing delete — it is noticed weeks later as a second copy of
+        /// something standing in a doorway, and the only symptom is a floor that
+        /// has quietly become unreachable.
+        /// </summary>
+        [Test]
+        public void TheHouseIsBuiltOnceNotTwice()
+        {
+            var seen = new System.Collections.Generic.Dictionary<string, int>();
+
+            foreach (var root in UnityEngine.SceneManagement.SceneManager
+                         .GetActiveScene().GetRootGameObjects())
+            {
+                seen.TryGetValue(root.name, out var count);
+                seen[root.name] = count + 1;
+            }
+
+            foreach (var (name, count) in seen)
+                Assert.AreEqual(1, count,
+                    $"There are {count} roots called '{name}'. The builder is " +
+                    "leaving the old one behind instead of replacing it.");
+        }
+
+        /// <summary>
+        /// The crawl between the cellar and the garage is the one place in the
+        /// house she cannot follow you into, and it is not a flag or a special
+        /// case — the ceiling is 1.2 m and she is 1.9 m to the bake, so no
+        /// walkable surface is generated in there at all.
+        ///
+        /// This checks the mechanic the way the game does: by measuring, not by
+        /// trusting that a value somewhere is still what it was.
+        /// </summary>
+        [Test]
+        public void SheCannotGetIntoTheCrawl()
+        {
+            var crawl = GameObject.Find("House").transform.Find("Garage/CrawlFloor");
+            Assert.IsNotNull(crawl, "No crawl was built.");
+
+            var inside = crawl.position + Vector3.up * 0.4f;
+
+            Assert.IsFalse(NavMesh.SamplePosition(inside, out _, 0.55f, NavMesh.AllAreas),
+                "There is walkable surface inside the crawl. She can follow the " +
+                "player through it, and the only safe route in the house is gone.");
+        }
+
+        /// <summary>
+        /// The other half of the same mechanic: a crouched player has to fit.
+        ///
+        /// This reads both numbers rather than trusting either — the crawl is
+        /// only a shortcut if it is taller than a crouch and shorter than a
+        /// stand, and both of those are tuning values somebody will change.
+        /// </summary>
+        [Test]
+        public void ACrouchedPlayerFitsThroughItAndAStandingOneDoesNot()
+        {
+            var roof = GameObject.Find("House").transform.Find("Garage/CrawlRoof");
+            var floor = GameObject.Find("House").transform.Find("Garage/CrawlFloor");
+            Assert.IsNotNull(roof, "No crawl roof.");
+            Assert.IsNotNull(floor, "No crawl floor.");
+
+            var headroom = roof.GetComponent<Renderer>().bounds.min.y
+                           - floor.GetComponent<Renderer>().bounds.max.y;
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Prefabs/Player.prefab");
+            Assert.IsNotNull(prefab, "No player prefab.");
+
+            var motor = new SerializedObject(prefab.GetComponent<PlayerMotor>());
+            var crouched = motor.FindProperty("crouchHeight").floatValue;
+            var standing = motor.FindProperty("standingHeight").floatValue;
+
+            Assert.Greater(headroom, crouched,
+                $"The crawl is {headroom:F2} m and a crouched player is {crouched:F2} m. " +
+                "Nobody can get through it.");
+
+            Assert.Less(headroom, standing,
+                $"The crawl is {headroom:F2} m and a standing player is {standing:F2} m. " +
+                "You can walk through it, so crouching costs nothing and she can follow.");
+        }
+
+        /// <summary>
+        /// ...but the garage itself is not sealed off from her. The crawl is a
+        /// shortcut the player owns, not a room she is banned from, or hiding in
+        /// the garage would simply end the game.
+        /// </summary>
+        [Test]
+        public void SheCanStillWalkRoundToTheGarage()
+        {
+            var spawn = GameObject.Find("GrannySpawn");
+            var bench = Find<WeaponBench>();
+
+            var from = OnNavMesh(spawn.transform.position, "Her starting point");
+            var to = OnNavMesh(bench.transform.position + Vector3.left * 1.5f, "the workbench");
+
+            var path = new NavMeshPath();
+            NavMesh.CalculatePath(from, to, NavMesh.AllAreas, path);
+
+            Assert.AreEqual(NavMeshPathStatus.PathComplete, path.status,
+                "She cannot reach the garage at all. The passage beside the crawl " +
+                "is there so the crawl is a shortcut rather than a sanctuary.");
         }
 
         [Test]
