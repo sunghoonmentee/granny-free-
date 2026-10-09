@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cba4affd5b096bd4ea8fd9d5526c9ce6, type: 3}
+  m_Name: Item_sparkplug
+  m_EditorClassIdentifier: Granny.Core::Granny.Core.ItemDefinition
+  id: sparkplug
+  displayName: Spark Plug
+  description: 
+  icon: {fileID: 0}
+  worldPrefab: {fileID: 3457564944168021498, guid: 8b12ea855aead8049a8cb4d137f99978, type: 3}
+  tags:
+  - sparkplug
+  consumedOnUse: 0
+  impactLoudness: 0.4

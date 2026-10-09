@@ -20,6 +20,16 @@ namespace Granny.Gameplay.Interaction
         [Tooltip("Every stage that must be cleared. Collected from children if empty.")]
         [SerializeField] LockStage[] stages = Array.Empty<LockStage>();
 
+        [Tooltip("Whether difficulty decides how many of these are fitted. True for the front door, false for the truck.")]
+        [SerializeField] bool scaledByDifficulty = true;
+
+        /// <summary>
+        /// Whether the difficulty setting trims this one. The front door gets
+        /// longer as the game gets harder; the truck is five parts on every
+        /// setting, which is what makes it the steady alternative.
+        /// </summary>
+        public bool ScaledByDifficulty => scaledByDifficulty;
+
         [Header("Opening")]
         [SerializeField] HingeDoor leaf;
 

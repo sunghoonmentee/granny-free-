@@ -120,6 +120,19 @@ namespace Granny.EditorTools
 
             ("fuse", "Ceramic Fuse", new[] { "electrics" },
                 new Color(0.72f, 0.55f, 0.28f), new Vector3(0.05f, 0.05f, 0.14f), 0.3f, false),
+
+            // The truck. Five parts, all of which have to end up in the garage.
+            ("sparkplug", "Spark Plug", new[] { "sparkplug" },
+                new Color(0.78f, 0.76f, 0.70f), new Vector3(0.04f, 0.14f, 0.04f), 0.4f, false),
+
+            ("truckbattery", "Truck Battery", new[] { "truckbattery" },
+                new Color(0.20f, 0.40f, 0.26f), new Vector3(0.26f, 0.20f, 0.18f), 1.3f, false),
+
+            ("fuel", "Jerry Can", new[] { "fuel" },
+                new Color(0.68f, 0.42f, 0.14f), new Vector3(0.20f, 0.32f, 0.14f), 1.1f, false),
+
+            ("truckkey", "Truck Key", new[] { "truckkey" },
+                new Color(0.82f, 0.72f, 0.32f), new Vector3(0.04f, 0.09f, 0.02f), 0.3f, false),
         };
 
         static List<ItemDefinition> BuildItems()

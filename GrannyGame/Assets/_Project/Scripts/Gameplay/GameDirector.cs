@@ -95,8 +95,10 @@ namespace Granny.Gameplay
 
             // Before Restore, so a resumed run restores progress onto the door
             // this difficulty actually has rather than onto locks it does not.
-            var door = FindAnyObjectByType<Interaction.EscapeDoor>();
-            if (door != null && difficulty != null) door.FitLocks(difficulty.FrontDoorLocks);
+            if (difficulty != null)
+                foreach (var way in FindObjectsByType<Interaction.EscapeDoor>(FindObjectsSortMode.None))
+                    if (way.ScaledByDifficulty)
+                        way.FitLocks(difficulty.FrontDoorLocks);
 
             Restore();
         }

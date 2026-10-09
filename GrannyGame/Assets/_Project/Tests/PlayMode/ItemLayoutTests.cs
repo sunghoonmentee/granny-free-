@@ -53,17 +53,40 @@ namespace Granny.Tests
         static Drawer[] Containers() =>
             Object.FindObjectsByType<Drawer>(FindObjectsSortMode.None);
 
-        /// <summary>Which tags the front door needs off it before it will open.</summary>
+        /// <summary>
+        /// Every tag any way out asks for — the front door and the truck both.
+        ///
+        /// Asking the scene rather than keeping a list here is the point: a lock
+        /// added to either route is automatically something the layouts have to
+        /// be able to supply, and nobody has to remember to update a second
+        /// place when they add one.
+        /// </summary>
         static string[] RequiredTags()
         {
-            var door = Object.FindAnyObjectByType<EscapeDoor>();
-            Assert.IsNotNull(door, "No front door.");
+            var ways = Object.FindObjectsByType<EscapeDoor>(FindObjectsSortMode.None);
+            Assert.IsNotEmpty(ways, "No way out of the house at all.");
 
-            return door.GetComponentsInChildren<LockStage>(true)
+            return ways
+                .SelectMany(way => way.GetComponentsInChildren<LockStage>(true))
                 .Select(stage => stage.RequiredTag)
                 .Where(tag => !string.IsNullOrEmpty(tag))
                 .Distinct()
                 .ToArray();
+        }
+
+        [UnityTest]
+        public IEnumerator ThereIsMoreThanOneWayOut()
+        {
+            yield return null;
+
+            var ways = Object.FindObjectsByType<EscapeDoor>(FindObjectsSortMode.None);
+
+            Assert.GreaterOrEqual(ways.Length, 2,
+                "The design calls for two routes. One of them failing a layout " +
+                "should not be the end of the run.");
+
+            Assert.AreEqual(1, ways.Count(w => w.ScaledByDifficulty),
+                "Exactly one route should get longer as the difficulty rises.");
         }
 
         [UnityTest]
