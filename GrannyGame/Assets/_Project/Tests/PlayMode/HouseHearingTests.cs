@@ -172,26 +172,25 @@ namespace Granny.Tests
             var board = FindLiveBoardUpstairs();
             Assert.IsNotNull(board);
 
-            var startFloor = HouseLayout.FloorOf(granny.transform.position);
-
             for (var i = 0; i < 20; i++)
             {
                 board.TryCreak(board.gameObject, speed: 1.3f, crouching: true);
                 yield return null;
             }
 
+            // Her patrol route crosses storeys, so where she ends up says nothing
+            // about whether she heard anything. What matters is that she never
+            // stops patrolling: Investigate is the state a noise puts her in.
             var elapsed = 0f;
             while (elapsed < 6f)
             {
                 elapsed += Time.deltaTime;
 
-                Assert.AreNotEqual(GrannyState.Investigate, granny.State,
+                Assert.AreEqual(GrannyState.Patrol, granny.State,
                     "Crouching over a board has to be the answer to it.");
 
                 yield return null;
             }
-
-            Assert.AreEqual(startFloor, HouseLayout.FloorOf(granny.transform.position));
         }
 
         /// <summary>
@@ -253,8 +252,6 @@ namespace Granny.Tests
         {
             yield return null;
 
-            var startFloor = HouseLayout.FloorOf(granny.transform.position);
-
             // Footsteps are filtered by NoiseRules, so these must do nothing.
             for (var i = 0; i < 10; i++)
             {
@@ -263,19 +260,19 @@ namespace Granny.Tests
                 yield return null;
             }
 
+            // She patrols the whole house, cellar to attic, so leaving the floor
+            // she started on proves nothing either way. Staying in Patrol does:
+            // a sound that reached her would put her in Investigate.
             var elapsed = 0f;
             while (elapsed < 6f)
             {
                 elapsed += Time.deltaTime;
 
-                Assert.AreNotEqual(GrannyState.Investigate, granny.State,
+                Assert.AreEqual(GrannyState.Patrol, granny.State,
                     "Walking and opening drawers must not draw her.");
 
                 yield return null;
             }
-
-            Assert.AreEqual(startFloor, HouseLayout.FloorOf(granny.transform.position),
-                "She left the cellar over sounds she should not be able to hear.");
         }
     }
 }

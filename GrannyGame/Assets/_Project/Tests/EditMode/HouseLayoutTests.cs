@@ -222,6 +222,31 @@ namespace Granny.Tests
             }
         }
 
+        /// <summary>
+        /// Rebuilding the house has to replace what it built last time, not add
+        /// to it. A root left off the builder's cleanup list is not noticed as a
+        /// missing delete — it is noticed weeks later as a second copy of
+        /// something standing in a doorway, and the only symptom is a floor that
+        /// has quietly become unreachable.
+        /// </summary>
+        [Test]
+        public void TheHouseIsBuiltOnceNotTwice()
+        {
+            var seen = new System.Collections.Generic.Dictionary<string, int>();
+
+            foreach (var root in UnityEngine.SceneManagement.SceneManager
+                         .GetActiveScene().GetRootGameObjects())
+            {
+                seen.TryGetValue(root.name, out var count);
+                seen[root.name] = count + 1;
+            }
+
+            foreach (var (name, count) in seen)
+                Assert.AreEqual(1, count,
+                    $"There are {count} roots called '{name}'. The builder is " +
+                    "leaving the old one behind instead of replacing it.");
+        }
+
         [Test]
         public void NoFurnitureStandsOnTheStairs()
         {
