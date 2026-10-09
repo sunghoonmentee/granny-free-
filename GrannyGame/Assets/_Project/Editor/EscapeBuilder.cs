@@ -26,9 +26,13 @@ namespace Granny.EditorTools
         static readonly Vector3 DoorPosition = new(0f, 0f, 10f);
 
         /// <summary>
-        /// The three fastenings, in the order they appear on the door. Each wants
-        /// a different tool, and only one tool fits in the player's hands, so
-        /// clearing the door is three separate trips across the house.
+        /// The fastenings, in the order they are added. Each wants a different
+        /// tool, and only one tool fits in the player's hands, so clearing the
+        /// door is one trip across the house per fastening.
+        ///
+        /// The first three are always on the door. The rest are switched on by
+        /// difficulty, which is what makes Extreme a longer night rather than
+        /// only a faster one.
         /// </summary>
         static readonly (string id, string tag, string verb, string hint, Color colour,
             Vector3 localPosition, Vector3 size)[] Stages =
@@ -41,6 +45,18 @@ namespace Granny.EditorTools
 
             ("Padlock", "key.front", "Unlock the padlock", "It needs a key.",
                 new Color(0.78f, 0.66f, 0.25f), new Vector3(0.42f, 1.0f, 0.12f), new Vector3(0.16f, 0.22f, 0.1f)),
+
+            // Normal and up.
+            ("Combination", "combination", "Work the combination", "Four digits, and you do not know them.",
+                new Color(0.55f, 0.55f, 0.58f), new Vector3(-0.42f, 1.35f, 0.12f), new Vector3(0.2f, 0.14f, 0.1f)),
+
+            // Hard and up.
+            ("Battery", "battery", "Fit the cell", "The keypad is dead.",
+                new Color(0.25f, 0.45f, 0.30f), new Vector3(0.5f, 1.45f, 0.1f), new Vector3(0.22f, 0.12f, 0.08f)),
+
+            // Extreme, and the extra-locks mode.
+            ("Fusebox", "electrics", "Replace the fuse", "The lock has no power at all.",
+                new Color(0.62f, 0.40f, 0.18f), new Vector3(-0.6f, 1.75f, 0.1f), new Vector3(0.26f, 0.26f, 0.09f)),
         };
 
         [MenuItem("Granny/Build Escape Door", priority = 40)]

@@ -60,17 +60,17 @@ namespace Granny.EditorTools
         /// </summary>
         static readonly (string name, int days, float patrol, float investigate, float chase,
             float reaction, float sight, float angle, float memory, float search, float check,
-            float stun, int traps, float creak)[]
+            float stun, int traps, float creak, int locks)[]
             DifficultyTable =
             {
                 // Practice has no hunter at all, so her numbers are only there to
                 // keep the asset valid. Its floorboards are turned up on purpose:
                 // with nobody coming, a creak is a lesson rather than a threat.
-                ("Practice", 99, 1.0f, 1.4f, 2.6f, 1.20f, 8f, 70f, 2.5f, 4f, 0.15f, 120f, 0, 0.50f),
-                ("Easy", 5, 1.2f, 1.8f, 3.4f, 0.70f, 10f, 85f, 4f, 5f, 0.30f, 120f, 2, 0f),
-                ("Normal", 5, 1.5f, 2.3f, 4.1f, 0.35f, 13f, 105f, 6f, 7f, 0.50f, 60f, 3, 0.40f),
-                ("Hard", 5, 1.8f, 2.8f, 4.7f, 0.15f, 17f, 125f, 9f, 10f, 0.70f, 30f, 3, 0.65f),
-                ("Extreme", 5, 2.2f, 3.3f, 5.4f, 0.05f, 22f, 150f, 13f, 14f, 0.90f, 15f, 4, 1.00f),
+                ("Practice", 99, 1.0f, 1.4f, 2.6f, 1.20f, 8f, 70f, 2.5f, 4f, 0.15f, 120f, 0, 0.50f, 3),
+                ("Easy", 5, 1.2f, 1.8f, 3.4f, 0.70f, 10f, 85f, 4f, 5f, 0.30f, 120f, 2, 0f, 3),
+                ("Normal", 5, 1.5f, 2.3f, 4.1f, 0.35f, 13f, 105f, 6f, 7f, 0.50f, 60f, 3, 0.40f, 4),
+                ("Hard", 5, 1.8f, 2.8f, 4.7f, 0.15f, 17f, 125f, 9f, 10f, 0.70f, 30f, 3, 0.65f, 5),
+                ("Extreme", 5, 2.2f, 3.3f, 5.4f, 0.05f, 22f, 150f, 13f, 14f, 0.90f, 15f, 4, 1.00f, 6),
             };
 
         static List<DifficultyProfile> BuildDifficulties()
@@ -106,6 +106,7 @@ namespace Granny.EditorTools
                 so.FindProperty("stunSeconds").floatValue = row.stun;
                 so.FindProperty("trapLimit").intValue = row.traps;
                 so.FindProperty("creakyFloorShare").floatValue = row.creak;
+                so.FindProperty("frontDoorLocks").intValue = row.locks;
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 built.Add(profile);

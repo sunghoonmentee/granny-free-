@@ -52,7 +52,15 @@ namespace Granny.Gameplay
 
             var inventory = player != null ? player.GetComponentInChildren<PlayerInventory>() : null;
             if (inventory != null)
+            {
                 data.heldItemId = inventory.Held != null ? inventory.Held.Id : string.Empty;
+                data.darts = inventory.Darts;
+            }
+
+            // The layout is part of this run, like the day count. Leaving it out
+            // meant resuming moved every tool in the house.
+            var spawner = FindAnyObjectByType<ItemSpawner>();
+            if (spawner != null) data.itemLayout = spawner.Layout;
 
             foreach (var stage in FindObjectsByType<Interaction.LockStage>(FindObjectsSortMode.None))
                 if (stage.IsCleared)
@@ -85,6 +93,11 @@ namespace Granny.Gameplay
             if (player == null) player = FindAnyObjectByType<PlayerMotor>();
             if (granny == null) granny = FindAnyObjectByType<GrannyBrain>();
 
+            // Before Restore, so a resumed run restores progress onto the door
+            // this difficulty actually has rather than onto locks it does not.
+            var door = FindAnyObjectByType<Interaction.EscapeDoor>();
+            if (door != null && difficulty != null) door.FitLocks(difficulty.FrontDoorLocks);
+
             Restore();
         }
 
@@ -99,6 +112,9 @@ namespace Granny.Gameplay
             if (save == null) return;
 
             days.Restore(save.day);
+
+            var inventory = player != null ? player.GetComponentInChildren<PlayerInventory>() : null;
+            if (inventory != null) inventory.SetDarts(save.darts);
 
             var cleared = new HashSet<string>(save.clearedLockIds);
             foreach (var stage in FindObjectsByType<Interaction.LockStage>(FindObjectsSortMode.None))

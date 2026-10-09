@@ -177,7 +177,16 @@ namespace Granny.Tests
         {
             var door = Find<EscapeDoor>();
             Assert.IsNotNull(door, "No escape door. Run Granny > Build Escape Door.");
-            Assert.AreEqual(3, door.StagesRemaining, "The front door should start with three fastenings.");
+
+            // The door is built carrying every lock the game knows about; which
+            // of them are actually fitted is decided by difficulty when the run
+            // starts. One door, one place for a lock to be wrong.
+            Assert.AreEqual(6, door.StagesFitted,
+                "The door should be built with the full set of fastenings.");
+
+            Assert.AreEqual(door.StagesFitted, door.StagesRemaining,
+                "A freshly built door has had nothing taken off it.");
+            Assert.IsFalse(door.IsUnlocked);
         }
 
         // ------------------------------------------------------------------

@@ -26,4 +26,5 @@ MonoBehaviour:
   hidingSpotCheckChance: 0.15
   stunSeconds: 120
   trapLimit: 0
+  frontDoorLocks: 3
   creakyFloorShare: 0.5

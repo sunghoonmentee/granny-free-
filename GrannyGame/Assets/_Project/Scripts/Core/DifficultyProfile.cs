@@ -50,6 +50,10 @@ namespace Granny.Core
         [Tooltip("How many of her bear traps can be out at once. The oldest goes when a new one lands.")]
         [SerializeField, Range(0, 6)] int trapLimit = 3;
 
+        [Header("Escaping")]
+        [Tooltip("Fastenings on the front door. The original scale: 3 / 3 / 4 / 5 / 6.")]
+        [SerializeField, Range(1, 6)] int frontDoorLocks = 4;
+
         [Header("The house")]
         [Tooltip("Share of the floorboards that creak this run. 0 silences them all.")]
         [SerializeField, Range(0f, 1f)] float creakyFloorShare = 0.4f;
@@ -74,6 +78,8 @@ namespace Granny.Core
         public float StunSeconds => stunSeconds;
 
         public int TrapLimit => trapLimit;
+
+        public int FrontDoorLocks => frontDoorLocks;
 
         public float CreakyFloorShare => creakyFloorShare;
     }

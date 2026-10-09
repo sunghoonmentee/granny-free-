@@ -442,6 +442,18 @@ namespace Granny.EditorTools
             new(-11.55f, UpperY, -6f, 90f),        // bathroom
             new(11.55f, UpperY, 6f, -90f),         // her room
             new(0f, AtticY, 5.6f, 180f),
+
+            // Nine tools need somewhere to be, and a drawer that is empty more
+            // often than not is what makes finding something mean anything.
+            new(-11.55f, GroundY, 2f, 90f),        // kitchen, by the door
+            new(-6f, GroundY, -9.55f, 0f),         // parlour, south wall
+            new(11.55f, GroundY, 2f, -90f),        // stair hall
+            new(6f, GroundY, -9.55f, 0f),          // living room, south wall
+            new(-6f, UpperY, 9.55f, 180f),         // the child's room
+            new(-11.55f, UpperY, -2f, 90f),        // bathroom
+            new(6f, UpperY, -9.55f, 0f),           // guest room
+            new(-6f, BasementY, 9.55f, 180f),      // cellar store
+            new(20f, BasementY, -6.55f, 0f),       // the garage
         };
 
         static readonly Placement[] Wardrobes =
@@ -911,6 +923,9 @@ namespace Granny.EditorTools
                 "Item_hammer", "Item_wirecutters", "Item_key_front",
                 // The three trips that buy the crossbow.
                 "Item_bow_stock", "Item_bow_limb", "Item_bow_cord",
+                // The locks the harder settings add. Always placed, whatever the
+                // difficulty, so every setting is winnable from the same house.
+                "Item_note", "Item_battery", "Item_fuse",
             };
             required.arraySize = ids.Length;
 

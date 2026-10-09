@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Granny.Core;
 using UnityEngine;
@@ -39,9 +40,42 @@ namespace Granny.Gameplay.Interaction
             }
         }
 
-        public bool IsUnlocked => Stages.All(s => s == null || s.IsCleared);
+        /// <summary>The fastenings this run actually has on it.</summary>
+        IEnumerable<LockStage> Fitted =>
+            Stages.Where(s => s != null && s.gameObject.activeSelf);
 
-        public int StagesRemaining => Stages.Count(s => s != null && !s.IsCleared);
+        public bool IsUnlocked => Fitted.All(s => s.IsCleared);
+
+        public int StagesRemaining => Fitted.Count(s => !s.IsCleared);
+
+        /// <summary>How many fastenings are on the door this run.</summary>
+        public int StagesFitted => Fitted.Count();
+
+        /// <summary>
+        /// Takes fastenings off the door to suit the difficulty.
+        ///
+        /// The door is built carrying every lock the game knows about and then
+        /// has the unused ones removed, rather than each difficulty building its
+        /// own door. One door means one place for a lock to be wrong, and the
+        /// order is fixed so "the fourth lock" means the same thing to everybody.
+        /// </summary>
+        public void FitLocks(int count)
+        {
+            var all = Stages;
+            var keep = Mathf.Clamp(count, 1, all.Length);
+
+            for (var i = 0; i < all.Length; i++)
+            {
+                if (all[i] == null) continue;
+
+                var fitted = i < keep;
+                all[i].gameObject.SetActive(fitted);
+
+                // A lock that is not on the door must not count as one that has
+                // been dealt with, or removing it would read as progress.
+                if (!fitted) all[i].Restore();
+            }
+        }
 
         /// <summary>Raised once, when the player steps through.</summary>
         public event Action Escaped;

@@ -18,13 +18,27 @@ namespace Granny.Core
         /// <summary>
         /// 2: the belt was removed, so pocketed item ids no longer exist. A file
         /// from version 1 would restore a run with items that have nowhere to go.
+        ///
+        /// 3: the item layout is chosen once per run and written down. Without
+        /// it, resuming re-rolled where every tool was hidden, so quitting and
+        /// coming back moved the hammer.
         /// </summary>
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         public int version = CurrentVersion;
 
         public string difficultyName = "Normal";
         public int day = 1;
+
+        /// <summary>
+        /// Which of the fixed item layouts this run is using. Chosen when the run
+        /// starts and never again: the house is learnable and the layout is part
+        /// of the house for as long as the run lasts.
+        /// </summary>
+        public int itemLayout;
+
+        /// <summary>Darts in the pocket, which do not take the hand.</summary>
+        public int darts;
 
         /// <summary>Item id in the player's one hand, or empty.</summary>
         public string heldItemId = string.Empty;
