@@ -92,7 +92,7 @@ namespace Granny.EditorTools
                 // off from the rest of the house.
                 if (root.name is "Greybox" or "House" or "Furnishings" or "Navigation"
                     or "PatrolPoints" or "Bed" or "Lighting" or "Spawner" or "NoiseMakers"
-                    or "Audio" or "Workbench")
+                    or "Audio" or "Workbench" or "Garage")
                     Object.DestroyImmediate(root);
 
             var palette = new Palette();
@@ -107,6 +107,7 @@ namespace Granny.EditorTools
             doorways.AddRange(BuildGround(house, palette));
             doorways.AddRange(BuildUpper(house, palette));
             BuildAttic(house, palette);
+            BuildGarage(house, palette);
             BuildStairs(house, palette);
 
             var furniture = Furnish(house, doorways);
@@ -155,7 +156,20 @@ namespace Granny.EditorTools
             floor.SetParent(parent, false);
 
             BuildKit.Slab(floor, "Slab", Footprint, BasementY, palette.Concrete, GameLayers.LevelGeometry);
-            Perimeter(floor, Footprint, BasementY, palette.Concrete);
+
+            // Three solid sides. The east wall is the one the garage is on the
+            // other side of, so it is pierced twice and built separately.
+            BuildKit.Wall(floor, "Wall_N", new Vector2(Footprint.xMin, Footprint.yMax),
+                new Vector2(Footprint.xMax, Footprint.yMax), BasementY, palette.Concrete,
+                GameLayers.LevelGeometry);
+            BuildKit.Wall(floor, "Wall_S", new Vector2(Footprint.xMin, Footprint.yMin),
+                new Vector2(Footprint.xMax, Footprint.yMin), BasementY, palette.Concrete,
+                GameLayers.LevelGeometry);
+            BuildKit.Wall(floor, "Wall_W", new Vector2(Footprint.xMin, Footprint.yMin),
+                new Vector2(Footprint.xMin, Footprint.yMax), BasementY, palette.Concrete,
+                GameLayers.LevelGeometry);
+
+            BuildBoilerRoomEastWall(floor, palette.Concrete);
 
             // Store on the west, boiler room on the east. The flight from the
             // parlour lands in the store, so the boiler is one room further in.
@@ -534,6 +548,7 @@ namespace Granny.EditorTools
             new(-8f, UpperY, 6f),           // the child's room
             new(-6f, BasementY, -5f),       // cellar store
             new(8f, BasementY, 4f),         // boiler room
+            new(22f, BasementY, 2f),        // the garage, by the passage
             new(0f, AtticY, 0f),
         };
 
@@ -577,6 +592,7 @@ namespace Granny.EditorTools
         {
             new(-9.7f, BasementY, -1.5f),   // cellar, at the foot of the stairs
             new(2f, BasementY, 0f),         // cellar, the boiler doorway
+            new(13.9f, BasementY, 2.3f),    // the passage out to the garage
             new(-9.7f, GroundY, -1f),       // head of the cellar stairs
             new(-7f, GroundY, 0f),          // between kitchen and parlour
             new(0f, GroundY, 8f),           // the hall, in front of the door
@@ -635,14 +651,171 @@ namespace Granny.EditorTools
                 $"{TrapSpots.Length} trap spots placed");
         }
 
+        // ------------------------------------------------------------------
+        // The garage, and the one way into it she cannot follow
+        // ------------------------------------------------------------------
+
+        /// <summary>The garage floor, level with the cellar: the house is on a slope.</summary>
+        static readonly Rect Garage = new(16f, -7f, 14f, 12f);
+
+        /// <summary>The ordinary way through, which she can use like anyone else.</summary>
+        static readonly Rect Passage = new(12f, 1f, 4f, 2.6f);
+
         /// <summary>
-        /// The workbench, in the cellar — the furthest point from everything, so
+        /// The crawl.
+        ///
+        /// A metre and a fifth of headroom, which is the whole mechanic: she is
+        /// 1.9 m to the NavMesh bake, so no walkable surface is generated in here
+        /// at all and she cannot path through it however much she wants to. A
+        /// crouched player is 1.05 m and fits. Nothing is flagged, nothing is
+        /// special-cased — it is simply too low for her, the way a cat flap is.
+        /// </summary>
+        static readonly Rect Crawl = new(12f, -5f, 4f, 1.4f);
+
+        const float CrawlHeight = 1.2f;
+
+        /// <summary>
+        /// The cellar side of the same two openings, so the passage and the crawl
+        /// go through both walls rather than into one.
+        /// </summary>
+        static void BuildBoilerRoomEastWall(Transform parent, Material material)
+        {
+            var spans = new[]
+            {
+                (Footprint.yMin, Crawl.yMin),
+                (Crawl.yMax, Passage.yMin),
+                (Passage.yMax, Footprint.yMax),
+            };
+
+            for (var i = 0; i < spans.Length; i++)
+            {
+                var (from, to) = spans[i];
+                if (to - from < 0.05f) continue;
+
+                BuildKit.Wall(parent, $"Wall_E_{i}", new Vector2(Footprint.xMax, from),
+                    new Vector2(Footprint.xMax, to), BasementY, material, GameLayers.LevelGeometry);
+            }
+
+            var lintelHeight = BuildKit.FloorHeight - BuildKit.SlabThickness - CrawlHeight;
+            BuildKit.Box(parent, "Wall_E_CrawlLintel",
+                new Vector3(Footprint.xMax, BasementY + CrawlHeight + lintelHeight * 0.5f, Crawl.center.y),
+                new Vector3(BuildKit.WallThickness, lintelHeight, Crawl.height),
+                material, GameLayers.LevelGeometry);
+        }
+
+        static void BuildGarage(Transform parent, Palette palette)
+        {
+            var garage = new GameObject("Garage").transform;
+            garage.SetParent(parent, false);
+
+            var concrete = palette.Concrete;
+
+            BuildKit.Slab(garage, "Slab", Garage, BasementY, concrete, GameLayers.LevelGeometry);
+            BuildKit.Slab(garage, "Roof", Garage, BasementY + BuildKit.FloorHeight,
+                palette.Ceiling, GameLayers.LevelGeometry);
+
+            // Three solid sides; the west wall is pierced twice, once for each
+            // way in, and the shutter goes in the south wall in R4.
+            BuildKit.Wall(garage, "Wall_N", new Vector2(Garage.xMin, Garage.yMax),
+                new Vector2(Garage.xMax, Garage.yMax), BasementY, concrete, GameLayers.LevelGeometry);
+            BuildKit.Wall(garage, "Wall_S", new Vector2(Garage.xMin, Garage.yMin),
+                new Vector2(Garage.xMax, Garage.yMin), BasementY, concrete, GameLayers.LevelGeometry);
+            BuildKit.Wall(garage, "Wall_E", new Vector2(Garage.xMax, Garage.yMin),
+                new Vector2(Garage.xMax, Garage.yMax), BasementY, concrete, GameLayers.LevelGeometry);
+
+            // The west wall, with the passage and the crawl cut out of it. Both
+            // openings are left by splitting the wall into the spans between them
+            // rather than by a doorway, because a crawl hole is not a door.
+            WestWallWithTwoWaysThrough(garage, concrete);
+
+            BuildPassage(garage, concrete);
+            BuildCrawl(garage, concrete);
+
+            BuildKit.Bulb(garage, "GarageBulb", new Vector3(23f, BasementY + 2.7f, -1f),
+                new Color(0.92f, 0.90f, 0.80f), 3.4f, 16f);
+            BuildKit.Bulb(garage, "GarageBulbS", new Vector3(19f, BasementY + 2.7f, -5f),
+                new Color(0.92f, 0.90f, 0.80f), 2.6f, 12f);
+            BuildKit.Bulb(garage, "CrawlBulb", new Vector3(14f, BasementY + 0.9f, -4.3f),
+                new Color(0.80f, 0.74f, 0.60f), 1.1f, 6f);
+        }
+
+        /// <summary>
+        /// The garage side of the two ways in: wall everywhere except where the
+        /// passage and the crawl come through.
+        /// </summary>
+        static void WestWallWithTwoWaysThrough(Transform parent, Material material)
+        {
+            var spans = new[]
+            {
+                (Garage.yMin, Crawl.yMin),
+                (Crawl.yMax, Passage.yMin),
+                (Passage.yMax, Garage.yMax),
+            };
+
+            for (var i = 0; i < spans.Length; i++)
+            {
+                var (from, to) = spans[i];
+                if (to - from < 0.05f) continue;
+
+                BuildKit.Wall(parent, $"Wall_W_{i}", new Vector2(Garage.xMin, from),
+                    new Vector2(Garage.xMin, to), BasementY, material, GameLayers.LevelGeometry);
+            }
+
+            // A lintel over the crawl, so the hole is crawl-height rather than
+            // floor-to-ceiling.
+            var lintelHeight = BuildKit.FloorHeight - BuildKit.SlabThickness - CrawlHeight;
+            BuildKit.Box(parent, "Wall_W_CrawlLintel",
+                new Vector3(Garage.xMin, BasementY + CrawlHeight + lintelHeight * 0.5f, Crawl.center.y),
+                new Vector3(BuildKit.WallThickness, lintelHeight, Crawl.height),
+                material, GameLayers.LevelGeometry);
+        }
+
+        /// <summary>The corridor between the boiler room and the garage.</summary>
+        static void BuildPassage(Transform parent, Material material)
+        {
+            BuildKit.Slab(parent, "PassageFloor", Passage, BasementY, material, GameLayers.LevelGeometry);
+            BuildKit.Slab(parent, "PassageRoof", Passage, BasementY + BuildKit.FloorHeight,
+                material, GameLayers.LevelGeometry);
+
+            BuildKit.Wall(parent, "PassageWall_N", new Vector2(Passage.xMin, Passage.yMax),
+                new Vector2(Passage.xMax, Passage.yMax), BasementY, material, GameLayers.LevelGeometry);
+            BuildKit.Wall(parent, "PassageWall_S", new Vector2(Passage.xMin, Passage.yMin),
+                new Vector2(Passage.xMax, Passage.yMin), BasementY, material, GameLayers.LevelGeometry);
+        }
+
+        /// <summary>
+        /// The crawl: a floor, two cheeks and a ceiling at shoulder height. It is
+        /// the ceiling that does the work.
+        /// </summary>
+        static void BuildCrawl(Transform parent, Material material)
+        {
+            BuildKit.Slab(parent, "CrawlFloor", Crawl, BasementY, material, GameLayers.LevelGeometry);
+
+            BuildKit.Box(parent, "CrawlRoof",
+                new Vector3(Crawl.center.x, BasementY + CrawlHeight + BuildKit.SlabThickness * 0.5f,
+                    Crawl.center.y),
+                new Vector3(Crawl.width, BuildKit.SlabThickness, Crawl.height + BuildKit.WallThickness * 2f),
+                material, GameLayers.LevelGeometry);
+
+            foreach (var (name, z) in new[]
+                     {
+                         ("CrawlWall_N", Crawl.yMax + BuildKit.WallThickness * 0.5f),
+                         ("CrawlWall_S", Crawl.yMin - BuildKit.WallThickness * 0.5f),
+                     })
+                BuildKit.Box(parent, name,
+                    new Vector3(Crawl.center.x, BasementY + CrawlHeight * 0.5f, z),
+                    new Vector3(Crawl.width, CrawlHeight, BuildKit.WallThickness),
+                    material, GameLayers.LevelGeometry);
+        }
+
+        /// <summary>
+        /// The workbench, in the garage — the furthest point from everything, so
         /// each of the three parts is a full crossing of the house.
         /// </summary>
         static void BuildWorkbench()
         {
             var bench = new GameObject("Workbench");
-            bench.transform.position = new Vector3(9f, BasementY, -6f);
+            bench.transform.position = new Vector3(27f, BasementY, 3f);
 
             BuildKit.Box(bench.transform, "Top",
                 new Vector3(0f, 0.85f, 0f), new Vector3(2.0f, 0.1f, 0.8f),
