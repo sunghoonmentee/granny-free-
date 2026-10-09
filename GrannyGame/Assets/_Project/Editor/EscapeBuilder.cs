@@ -26,9 +26,13 @@ namespace Granny.EditorTools
         static readonly Vector3 DoorPosition = new(0f, 0f, 10f);
 
         /// <summary>
-        /// The three fastenings, in the order they appear on the door. Each wants
-        /// a different tool, and only one tool fits in the player's hands, so
-        /// clearing the door is three separate trips across the house.
+        /// The fastenings, in the order they are added. Each wants a different
+        /// tool, and only one tool fits in the player's hands, so clearing the
+        /// door is one trip across the house per fastening.
+        ///
+        /// The first three are always on the door. The rest are switched on by
+        /// difficulty, which is what makes Extreme a longer night rather than
+        /// only a faster one.
         /// </summary>
         static readonly (string id, string tag, string verb, string hint, Color colour,
             Vector3 localPosition, Vector3 size)[] Stages =
@@ -41,6 +45,18 @@ namespace Granny.EditorTools
 
             ("Padlock", "key.front", "Unlock the padlock", "It needs a key.",
                 new Color(0.78f, 0.66f, 0.25f), new Vector3(0.42f, 1.0f, 0.12f), new Vector3(0.16f, 0.22f, 0.1f)),
+
+            // Normal and up.
+            ("Combination", "combination", "Work the combination", "Four digits, and you do not know them.",
+                new Color(0.55f, 0.55f, 0.58f), new Vector3(-0.42f, 1.35f, 0.12f), new Vector3(0.2f, 0.14f, 0.1f)),
+
+            // Hard and up.
+            ("Battery", "battery", "Fit the cell", "The keypad is dead.",
+                new Color(0.25f, 0.45f, 0.30f), new Vector3(0.5f, 1.45f, 0.1f), new Vector3(0.22f, 0.12f, 0.08f)),
+
+            // Extreme, and the extra-locks mode.
+            ("Fusebox", "electrics", "Replace the fuse", "The lock has no power at all.",
+                new Color(0.62f, 0.40f, 0.18f), new Vector3(-0.6f, 1.75f, 0.1f), new Vector3(0.26f, 0.26f, 0.09f)),
         };
 
         [MenuItem("Granny/Build Escape Door", priority = 40)]
@@ -49,7 +65,7 @@ namespace Granny.EditorTools
             var scene = EditorSceneManager.OpenScene(HouseScenePath, OpenSceneMode.Single);
 
             foreach (var root in scene.GetRootGameObjects())
-                if (root.name == "FrontDoor")
+                if (root.name is "FrontDoor" or "Truck")
                     Object.DestroyImmediate(root);
 
             // The greybox shipped a decorative slab where the door goes; the real
@@ -126,9 +142,113 @@ namespace Granny.EditorTools
                 Debug.Log("[Escape] NavMesh rebaked around the new door");
             }
 
+            BuildTruck();
+
             BuildKit.SaveScene(scene, "Escape");
-            Debug.Log("[Escape] front door built with three fastenings");
+            Debug.Log($"[Escape] front door built with {Stages.Length} fastenings, and a truck");
             Debug.Log("[Escape] done");
+        }
+
+        // ------------------------------------------------------------------
+        // The second way out
+        // ------------------------------------------------------------------
+
+        /// <summary>In the garage, nose to the shutter.</summary>
+        static readonly Vector3 TruckPosition = new(22f, -BuildKit.FloorHeight, -2f);
+
+        /// <summary>
+        /// What the truck wants before it will start, and the chain on the
+        /// shutter in front of it.
+        ///
+        /// Five trips against the front door's three to six, and every one of
+        /// them ends in the garage — which is across the house and down, through
+        /// either a passage she walks or a crawl she cannot. The truck is the
+        /// longer route that is safer at the end of it.
+        /// </summary>
+        static readonly (string id, string tag, string verb, string hint, Color colour,
+            Vector3 localPosition, Vector3 size)[] TruckStages =
+        {
+            ("Chain", "cut", "Cut the shutter chain", "A chain holds the shutter down.",
+                new Color(0.55f, 0.55f, 0.58f), new Vector3(0f, 1.2f, -3.2f), new Vector3(0.1f, 1.4f, 0.1f)),
+
+            ("Plug", "sparkplug", "Fit the plug", "It will not even turn over.",
+                new Color(0.80f, 0.78f, 0.70f), new Vector3(0f, 1.25f, 1.6f), new Vector3(0.12f, 0.2f, 0.12f)),
+
+            ("Battery", "truckbattery", "Drop in the battery", "No battery under the bonnet.",
+                new Color(0.22f, 0.42f, 0.28f), new Vector3(-0.6f, 1.2f, 1.5f), new Vector3(0.4f, 0.3f, 0.3f)),
+
+            ("Fuel", "fuel", "Fill the tank", "The gauge is on empty.",
+                new Color(0.70f, 0.45f, 0.15f), new Vector3(1.1f, 0.9f, -0.6f), new Vector3(0.22f, 0.3f, 0.22f)),
+
+            ("Ignition", "truckkey", "Start the engine", "No key in it.",
+                new Color(0.85f, 0.75f, 0.35f), new Vector3(-0.5f, 1.3f, -0.4f), new Vector3(0.1f, 0.12f, 0.1f)),
+        };
+
+        static void BuildTruck()
+        {
+            var root = new GameObject("Truck");
+            root.transform.position = TruckPosition;
+            root.layer = GameLayers.Interactable;
+
+            var paint = EnsureMaterial("TruckPaint", new Color(0.32f, 0.26f, 0.22f));
+            var glass = EnsureMaterial("TruckGlass", new Color(0.16f, 0.20f, 0.22f));
+
+            // Not "Bed": the marker the player wakes at is called that, and
+            // GameObject.Find would start handing the truck out instead.
+            var flatbed = Box("Flatbed", root.transform, new Vector3(0f, 0.9f, -0.6f),
+                new Vector3(2.2f, 1.0f, 4.4f), paint);
+            flatbed.layer = GameLayers.Prop;
+
+            var cab = Box("Cab", root.transform, new Vector3(0f, 1.9f, -0.3f), new Vector3(2.0f, 1.0f, 2.0f), glass);
+            cab.layer = GameLayers.Prop;
+
+            var bonnet = Box("Bonnet", root.transform, new Vector3(0f, 1.05f, 1.7f), new Vector3(2.0f, 0.7f, 1.6f), paint);
+            bonnet.layer = GameLayers.Prop;
+
+            // The shutter the truck has to go out through. It stays shut; cutting
+            // the chain is what the player does about it.
+            var shutter = Box("Shutter", root.transform, new Vector3(0f, 1.5f, -3.4f),
+                new Vector3(4.6f, 3.0f, 0.12f), EnsureMaterial("TruckShutter", new Color(0.38f, 0.38f, 0.40f)));
+            shutter.layer = GameLayers.LevelGeometry;
+
+            var stages = new System.Collections.Generic.List<LockStage>();
+
+            foreach (var spec in TruckStages)
+            {
+                var holder = new GameObject($"Truck_{spec.id}");
+                holder.transform.SetParent(root.transform, false);
+                holder.SetActive(false);
+
+                var visual = Box($"{spec.id}_Visual", holder.transform,
+                    spec.localPosition, spec.size, EnsureMaterial($"Truck{spec.id}", spec.colour));
+                visual.layer = GameLayers.Interactable;
+
+                var stage = holder.AddComponent<LockStage>();
+
+                var so = new SerializedObject(stage);
+                so.FindProperty("requiredTag").stringValue = spec.tag;
+                so.FindProperty("verb").stringValue = spec.verb;
+                so.FindProperty("missingToolHint").stringValue = spec.hint;
+                so.FindProperty("visual").objectReferenceValue = visual;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                holder.SetActive(true);
+                stages.Add(stage);
+            }
+
+            var escape = root.AddComponent<EscapeDoor>();
+
+            var escapeSo = new SerializedObject(escape);
+
+            // The truck is five parts whatever the setting. Difficulty lengthens
+            // the front door instead, so the two routes diverge as it rises.
+            escapeSo.FindProperty("scaledByDifficulty").boolValue = false;
+
+            var stagesProp = escapeSo.FindProperty("stages");
+            stagesProp.arraySize = stages.Count;
+            for (var i = 0; i < stages.Count; i++)
+                stagesProp.GetArrayElementAtIndex(i).objectReferenceValue = stages[i];
+            escapeSo.ApplyModifiedPropertiesWithoutUndo();
         }
 
         static GameObject Box(string name, Transform parent, Vector3 localPosition, Vector3 localScale, Material material)

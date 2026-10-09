@@ -18,6 +18,13 @@ namespace Granny.Gameplay.Interaction
         [Header("Requirement")]
         [Tooltip("Tag of the tool that removes this, e.g. 'pry', 'cut', 'key.front'.")]
         [SerializeField] string requiredTag = "pry";
+
+        /// <summary>
+        /// The tool tag this fastening wants. Exposed so the layout test can ask
+        /// the door what the run needs rather than being told separately — a
+        /// second list of requirements is a second thing to forget to update.
+        /// </summary>
+        public string RequiredTag => requiredTag;
         [SerializeField] string verb = "Pry off";
         [SerializeField] string missingToolHint = "It is nailed shut.";
 

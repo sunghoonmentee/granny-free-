@@ -108,6 +108,31 @@ namespace Granny.EditorTools
             // and they can be picked up again from wherever they landed.
             ("dart", "Tranquilliser Dart", new[] { "dart" },
                 new Color(0.20f, 0.55f, 0.62f), new Vector3(0.03f, 0.03f, 0.26f), 0.2f, false),
+
+            // The locks the harder settings add. A note rather than a number
+            // typed on a keypad: the combination is a thing you have to carry to
+            // the door, which costs a trip like everything else.
+            ("note", "Torn Note", new[] { "combination" },
+                new Color(0.86f, 0.82f, 0.68f), new Vector3(0.14f, 0.01f, 0.18f), 0.1f, false),
+
+            ("battery", "Dry Cell", new[] { "battery" },
+                new Color(0.30f, 0.50f, 0.34f), new Vector3(0.07f, 0.14f, 0.07f), 0.5f, false),
+
+            ("fuse", "Ceramic Fuse", new[] { "electrics" },
+                new Color(0.72f, 0.55f, 0.28f), new Vector3(0.05f, 0.05f, 0.14f), 0.3f, false),
+
+            // The truck. Five parts, all of which have to end up in the garage.
+            ("sparkplug", "Spark Plug", new[] { "sparkplug" },
+                new Color(0.78f, 0.76f, 0.70f), new Vector3(0.04f, 0.14f, 0.04f), 0.4f, false),
+
+            ("truckbattery", "Truck Battery", new[] { "truckbattery" },
+                new Color(0.20f, 0.40f, 0.26f), new Vector3(0.26f, 0.20f, 0.18f), 1.3f, false),
+
+            ("fuel", "Jerry Can", new[] { "fuel" },
+                new Color(0.68f, 0.42f, 0.14f), new Vector3(0.20f, 0.32f, 0.14f), 1.1f, false),
+
+            ("truckkey", "Truck Key", new[] { "truckkey" },
+                new Color(0.82f, 0.72f, 0.32f), new Vector3(0.04f, 0.09f, 0.02f), 0.3f, false),
         };
 
         static List<ItemDefinition> BuildItems()

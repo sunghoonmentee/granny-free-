@@ -92,7 +92,12 @@ namespace Granny.EditorTools
                 // off from the rest of the house.
                 if (root.name is "Greybox" or "House" or "Furnishings" or "Navigation"
                     or "PatrolPoints" or "Bed" or "Lighting" or "Spawner" or "NoiseMakers"
-                    or "Audio" or "Workbench" or "Garage")
+                    or "Audio" or "Workbench" or "Garage"
+                    // The ways out are rebuilt by EscapeBuilder, which runs after
+                    // GrannyBuilder. Leaving last build's copies standing here
+                    // means the director wires itself to objects that are about
+                    // to be destroyed, and ends up holding nulls.
+                    or "FrontDoor" or "Truck")
                     Object.DestroyImmediate(root);
 
             var palette = new Palette();
@@ -442,6 +447,24 @@ namespace Granny.EditorTools
             new(-11.55f, UpperY, -6f, 90f),        // bathroom
             new(11.55f, UpperY, 6f, -90f),         // her room
             new(0f, AtticY, 5.6f, 180f),
+
+            // Nine tools need somewhere to be, and a drawer that is empty more
+            // often than not is what makes finding something mean anything.
+            new(-11.55f, GroundY, 2f, 90f),        // kitchen, by the door
+            new(-6f, GroundY, -9.55f, 0f),         // parlour, south wall
+            new(11.55f, GroundY, 2f, -90f),        // stair hall
+            new(6f, GroundY, -9.55f, 0f),          // living room, south wall
+            new(-6f, UpperY, 9.55f, 180f),         // the child's room
+            new(-11.55f, UpperY, -2f, 90f),        // bathroom
+            new(6f, UpperY, -9.55f, 0f),           // guest room
+            new(-6f, BasementY, 9.55f, 180f),      // cellar store
+            new(20f, BasementY, -6.55f, 0f),       // the garage
+            new(27f, BasementY, 4.55f, 180f),      // the garage, by the bench
+            new(-2f, BasementY, -9.55f, 0f),       // cellar store, south wall
+            new(2f, GroundY, -9.55f, 0f),          // the hall, south end
+            new(-2f, UpperY, -9.55f, 0f),          // her room
+            new(11.55f, UpperY, 2f, -90f),         // guest room, by the landing
+            new(4.5f, AtticY, -5f, 0f),            // the attic
         };
 
         static readonly Placement[] Wardrobes =
@@ -911,6 +934,11 @@ namespace Granny.EditorTools
                 "Item_hammer", "Item_wirecutters", "Item_key_front",
                 // The three trips that buy the crossbow.
                 "Item_bow_stock", "Item_bow_limb", "Item_bow_cord",
+                // The locks the harder settings add. Always placed, whatever the
+                // difficulty, so every setting is winnable from the same house.
+                "Item_note", "Item_battery", "Item_fuse",
+                // The truck, which is the other way out.
+                "Item_sparkplug", "Item_truckbattery", "Item_fuel", "Item_truckkey",
             };
             required.arraySize = ids.Length;
 

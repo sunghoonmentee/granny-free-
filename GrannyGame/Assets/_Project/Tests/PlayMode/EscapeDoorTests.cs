@@ -208,6 +208,56 @@ namespace Granny.Tests
             Assert.AreEqual(1, heard, "Every swing has to announce itself.");
         }
 
+        /// <summary>
+        /// Difficulty decides how many fastenings are on the door, and a lock
+        /// that is not fitted must not read as one already dealt with.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator DifficultyDecidesHowManyFasteningsThereAre()
+        {
+            yield return null;
+
+            Assert.AreEqual(2, door.StagesFitted, "Both were built onto it.");
+
+            door.FitLocks(1);
+
+            Assert.AreEqual(1, door.StagesFitted);
+            Assert.AreEqual(1, door.StagesRemaining,
+                "A lock taken off the door is not a lock the player got off it.");
+            Assert.IsFalse(door.IsUnlocked);
+
+            // And the one that is still there behaves exactly as before.
+            inventory.TryTake(MakeTool("hammer", "pry"));
+            plank.Interact(player);
+
+            Assert.IsTrue(door.IsUnlocked, "With one fastening fitted and cleared, it opens.");
+        }
+
+        [UnityTest]
+        public IEnumerator FittingMoreLocksPutsThemBackUnCleared()
+        {
+            yield return null;
+
+            inventory.TryTake(MakeTool("hammer", "pry"));
+            plank.Interact(player);
+            inventory.TryTake(MakeTool("cutters", "cut"));
+            cord.Interact(player);
+
+            Assert.IsTrue(door.IsUnlocked, "Both were cleared.");
+
+            // Taking the cord off the door and putting it back must not carry the
+            // player's progress with it. The plank was never removed, so it stays
+            // cleared — that part is not undone and should not be.
+            door.FitLocks(1);
+            door.FitLocks(2);
+
+            Assert.AreEqual(2, door.StagesFitted);
+            Assert.IsFalse(cord.IsCleared,
+                "A fastening coming back onto the door comes back fastened.");
+            Assert.IsTrue(plank.IsCleared, "...and one that never left stays off.");
+            Assert.AreEqual(1, door.StagesRemaining);
+        }
+
         [UnityTest]
         public IEnumerator RestorePutsEveryFasteningBack()
         {

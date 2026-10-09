@@ -175,14 +175,39 @@ namespace Granny.Tests
         [Test]
         public void TheFrontDoorIsStillFastenedShut()
         {
-            var door = Find<EscapeDoor>();
-            Assert.IsNotNull(door, "No escape door. Run Granny > Build Escape Door.");
-            Assert.AreEqual(3, door.StagesRemaining, "The front door should start with three fastenings.");
+            var door = FrontDoor();
+
+            // The door is built carrying every lock the game knows about; which
+            // of them are actually fitted is decided by difficulty when the run
+            // starts. One door, one place for a lock to be wrong.
+            Assert.AreEqual(6, door.StagesFitted,
+                "The door should be built with the full set of fastenings.");
+
+            Assert.AreEqual(door.StagesFitted, door.StagesRemaining,
+                "A freshly built door has had nothing taken off it.");
+            Assert.IsFalse(door.IsUnlocked);
         }
 
         // ------------------------------------------------------------------
         // Things that were actually wrong, and must not come back
         // ------------------------------------------------------------------
+
+        /// <summary>
+        /// The front door rather than the truck.
+        ///
+        /// There are two ways out of the house now, and the truck happens to
+        /// have five parts — which is a plausible number of fastenings for a
+        /// door, so a test that grabs whichever it finds first fails in a way
+        /// that reads as a layout bug. It is the one difficulty lengthens.
+        /// </summary>
+        static EscapeDoor FrontDoor()
+        {
+            var door = Object.FindObjectsByType<EscapeDoor>(FindObjectsSortMode.None)
+                .FirstOrDefault(d => d.ScaledByDifficulty);
+
+            Assert.IsNotNull(door, "No front door. Run Granny > Build Escape Door.");
+            return door;
+        }
 
         static Vector3 OnNavMesh(Vector3 position, string what)
         {
@@ -207,7 +232,7 @@ namespace Granny.Tests
             var destinations = new System.Collections.Generic.List<(string name, Vector3 point)>
             {
                 ("the bed", GameObject.Find("Bed").transform.position),
-                ("the front door", Find<EscapeDoor>().transform.position + Vector3.back * 1.5f),
+                ("the front door", FrontDoor().transform.position + Vector3.back * 1.5f),
             };
 
             foreach (var marker in GameObject.FindGameObjectsWithTag("SpawnPoint"))

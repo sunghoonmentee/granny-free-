@@ -25,9 +25,24 @@ namespace Granny.Gameplay
         [Tooltip("Containers to draw from. Collected from the scene if empty.")]
         [SerializeField] List<Drawer> containers = new();
 
-        [Header("Determinism")]
-        [Tooltip("Non-zero repeats the same layout every run — useful when testing.")]
-        [SerializeField] int seed;
+        [Header("Layouts")]
+        /// <summary>
+        /// Five fixed arrangements rather than a fresh shuffle every time.
+        ///
+        /// Pure randomness means the house can never be learned — every run is
+        /// the same amount of searching, and knowing the place buys nothing. A
+        /// small set of layouts gives a player something to recognise two rooms
+        /// in ("this is the one with the cutters in the attic") while still
+        /// making the first drawer a real question. It is also the difference
+        /// between being able to test that the run is winnable and hoping.
+        /// </summary>
+        [Tooltip("One seed per layout. Changing these changes what players have learned.")]
+        [SerializeField] int[] layoutSeeds = { 1101, 2203, 3307, 4409, 5501 };
+
+        /// <summary>Which layout this run is using, counting from zero.</summary>
+        public int Layout { get; private set; }
+
+        public int LayoutCount => Mathf.Max(1, layoutSeeds.Length);
 
         /// <summary>Which container each required item ended up in, for debugging.</summary>
         public IReadOnlyDictionary<string, string> Placements => placements;
@@ -39,10 +54,24 @@ namespace Granny.Gameplay
             if (containers.Count == 0)
                 containers.AddRange(FindObjectsByType<Drawer>(FindObjectsSortMode.None));
 
-            Distribute();
+            // A run that is being resumed brings its layout with it; a new one
+            // picks. Re-rolling on resume would move every tool in the house
+            // while the player was looking away.
+            var save = SaveSystem.Load();
+            Apply(save != null ? save.itemLayout : Random.Range(0, LayoutCount));
         }
 
-        void Distribute()
+        /// <summary>
+        /// Lays the house out as <paramref name="layout"/> says. Public so the
+        /// winnability test can walk all five without starting five runs.
+        /// </summary>
+        public void Apply(int layout)
+        {
+            Layout = ((layout % LayoutCount) + LayoutCount) % LayoutCount;
+            Distribute(layoutSeeds[Layout]);
+        }
+
+        void Distribute(int seed)
         {
             placements.Clear();
 
@@ -60,8 +89,12 @@ namespace Granny.Gameplay
                 return;
             }
 
-            var random = seed != 0 ? new System.Random(seed) : new System.Random();
+            // Containers are ordered by name first, so the same seed means the
+            // same layout no matter what order the scene happens to report them
+            // in. Without this the "fixed" layouts would drift every rebuild.
+            var random = new System.Random(seed);
             var shuffled = new List<Drawer>(containers);
+            shuffled.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
 
             // Fisher-Yates, so every container is equally likely to hold the tool
             // that unblocks the run rather than the early ones being favoured.
