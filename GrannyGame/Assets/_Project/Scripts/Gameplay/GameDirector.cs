@@ -126,7 +126,22 @@ namespace Granny.Gameplay
         void Start()
         {
             ArmTheHouse();
+            TellThePlayerWhatDayItIs(days.Day);
             DayStarted?.Invoke(days.Day);
+        }
+
+        /// <summary>
+        /// Four nights of being caught show on the player, not in a number. The
+        /// director is the only thing that knows which morning this is, so it is
+        /// the only thing that can say.
+        /// </summary>
+        void TellThePlayerWhatDayItIs(int day)
+        {
+            var injury = player != null
+                ? player.GetComponentInChildren<PlayerInjury>()
+                : FindAnyObjectByType<PlayerInjury>();
+
+            if (injury != null) injury.SetDay(day);
         }
 
         void OnCaught(GameObject who)
@@ -199,6 +214,7 @@ namespace Granny.Gameplay
                 trap.Rearm();
 
             ArmTheHouse();
+            TellThePlayerWhatDayItIs(days.Day);
 
             // The run is written when a day begins and at no other time. Saving on
             // demand would let a player undo every mistake, and the mistakes are

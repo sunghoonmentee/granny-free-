@@ -41,9 +41,13 @@ namespace Granny.Core
         [Tooltip("The hall clock, looped.")]
         [SerializeField] AudioClip clock;
 
+        [Tooltip("The sting when she reaches you.")]
+        [SerializeField] AudioClip scare;
+
         public AudioClip Cane => cane;
         public AudioClip Heartbeat => heartbeat;
         public AudioClip Clock => clock;
+        public AudioClip Scare => scare;
 
         /// <summary>
         /// What <paramref name="kind"/> sounds like, or a null clip when nothing

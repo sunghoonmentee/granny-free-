@@ -60,3 +60,4 @@ MonoBehaviour:
   cane: {fileID: 8300000, guid: 97d73e5250049a94fa878f40feeb2d7e, type: 3}
   heartbeat: {fileID: 8300000, guid: 3acb5ed2cb473c448bbe989520bb56e2, type: 3}
   clock: {fileID: 8300000, guid: 4bf01c3fbd4c835409a39f1e44964dfa, type: 3}
+  scare: {fileID: 8300000, guid: b287cc12011461d47bf81950564fbd8b, type: 3}

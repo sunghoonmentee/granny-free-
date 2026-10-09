@@ -303,6 +303,7 @@ GameObject:
   - component: {fileID: 8203499167909075911}
   - component: {fileID: 3443100705337497205}
   - component: {fileID: 8333718204305827772}
+  - component: {fileID: 4557238838145943529}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -483,6 +484,21 @@ MonoBehaviour:
   dartItem: {fileID: 11400000, guid: 57cd88317b286cd498ea4c6554640c86, type: 2}
   input: {fileID: 3827262472378524724}
   muzzle: {fileID: 4318637318837530608}
+--- !u!114 &4557238838145943529
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8405471997873073444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cfe457791c1c86498276bffbd0833b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Player.PlayerInjury
+  cameraPivot: {fileID: 4318637318837530608}
+  maximumRoll: 2.4
+  swaySpeed: 0.7
 --- !u!1 &9082950872087997385
 GameObject:
   m_ObjectHideFlags: 0

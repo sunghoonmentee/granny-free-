@@ -427,6 +427,33 @@ namespace Granny.EditorTools
             Wire(hud, "batteryFill", batteryFill);
             Wire(hud, "batteryGroup", batteryGroup);
 
+            // Below the blackout so a fade to black still covers it, above
+            // everything else so the injury reads over the whole view.
+            var blood = MakeImage("Blood", root.transform, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            blood.sprite = BloodVignette();
+            blood.type = Image.Type.Simple;
+            blood.color = new Color(1f, 1f, 1f, 0f);
+
+            var bloodRect = blood.rectTransform;
+            bloodRect.anchorMin = Vector2.zero;
+            bloodRect.anchorMax = Vector2.one;
+            bloodRect.offsetMin = Vector2.zero;
+            bloodRect.offsetMax = Vector2.zero;
+
+            Wire(hud, "blood", blood);
+
+            var flash = MakeImage("ScareFlash", root.transform, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            flash.color = new Color(0.55f, 0.03f, 0.03f, 0f);
+
+            var flashRect = flash.rectTransform;
+            flashRect.anchorMin = Vector2.zero;
+            flashRect.anchorMax = Vector2.one;
+            flashRect.offsetMin = Vector2.zero;
+            flashRect.offsetMax = Vector2.zero;
+
+            var scare = root.AddComponent<Jumpscare>();
+            Wire(scare, "flash", flash);
+
             BuildDayOverlay(root, font);
 
             return SavePrefab(root, path);
@@ -473,6 +500,52 @@ namespace Granny.EditorTools
             Wire(overlay, "dayLabel", dayLabel);
             Wire(overlay, "verdictLabel", verdict);
             Wire(overlay, "dayGroup", dayGroup);
+        }
+
+        /// <summary>
+        /// The red at the edges on the last two mornings.
+        ///
+        /// Generated rather than painted, for the same reason the sounds are: it
+        /// keeps the project buildable from source. A radial falloff that is
+        /// clear in the middle and dark at the corners — it has to obscure the
+        /// edges of the view without ever hiding what the player is looking at.
+        /// </summary>
+        static Sprite BloodVignette()
+        {
+            const string path = "Assets/_Project/Art/Textures/BloodVignette.png";
+            const int size = 256;
+
+            if (!AssetDatabase.IsValidFolder("Assets/_Project/Art/Textures"))
+                AssetDatabase.CreateFolder("Assets/_Project/Art", "Textures");
+
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var centre = new Vector2(size * 0.5f, size * 0.5f);
+            var reach = size * 0.5f;
+
+            for (var y = 0; y < size; y++)
+            for (var x = 0; x < size; x++)
+            {
+                var distance = Vector2.Distance(new Vector2(x, y), centre) / reach;
+
+                // Nothing at all until well past halfway out, then quickly up.
+                var alpha = Mathf.Clamp01((distance - 0.55f) / 0.45f);
+                alpha = alpha * alpha;
+
+                texture.SetPixel(x, y, new Color(0.42f, 0.02f, 0.02f, alpha));
+            }
+
+            texture.Apply();
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            Object.DestroyImmediate(texture);
+
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.textureType = TextureImporterType.Sprite;
+            importer.alphaIsTransparency = true;
+            importer.SaveAndReimport();
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
         static Image MakeImage(string name, Transform parent, Vector2 anchor, Vector2 offset, Vector2 size)

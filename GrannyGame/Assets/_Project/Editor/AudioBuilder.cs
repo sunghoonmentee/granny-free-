@@ -44,6 +44,7 @@ namespace Granny.EditorTools
             Write("cane", CaneTap());
             Write("heartbeat", Heartbeat());
             Write("clock", ClockTick());
+            Write("scare", Scare());
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -108,6 +109,7 @@ namespace Granny.EditorTools
             so.FindProperty("cane").objectReferenceValue = Clip("cane");
             so.FindProperty("heartbeat").objectReferenceValue = Clip("heartbeat");
             so.FindProperty("clock").objectReferenceValue = Clip("clock");
+            so.FindProperty("scare").objectReferenceValue = Clip("scare");
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorUtility.SetDirty(bank);
@@ -383,6 +385,34 @@ namespace Granny.EditorTools
                 var second = life > 0.18f ? Mathf.Exp(-26f * (life - 0.18f)) * 0.75f : 0f;
 
                 samples[i] = Mathf.Sin(2f * Mathf.PI * 52f * t) * (first + second) * 0.6f;
+            }
+
+            return samples;
+        }
+
+        /// <summary>
+        /// Being caught: a rising shriek that stops dead rather than fading, so
+        /// the silence afterwards lands as hard as the sound did.
+        /// </summary>
+        static float[] Scare()
+        {
+            var samples = Buffer(0.5f);
+            var rng = new System.Random(149);
+            var phase = 0f;
+
+            for (var i = 0; i < samples.Length; i++)
+            {
+                var life = (float)i / samples.Length;
+
+                // Sweeping upward, which is the one shape nothing in a quiet
+                // house ever makes.
+                var pitch = Mathf.Lerp(260f, 1900f, life * life);
+                phase += 2f * Mathf.PI * pitch / SampleRate;
+
+                var cut = life > 0.9f ? 0f : 1f;
+                var grit = (float)(rng.NextDouble() * 2.0 - 1.0) * 0.3f;
+
+                samples[i] = (Mathf.Sin(phase) + grit) * cut * 0.75f;
             }
 
             return samples;
