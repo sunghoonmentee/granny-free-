@@ -47,7 +47,68 @@ namespace Granny.EditorTools
             Shoot(stand, folder, "side", new Vector3(2.6f, 1.35f, 0.2f), 1.25f);
             Shoot(stand, folder, "looming", new Vector3(0.3f, 0.75f, 1.35f), 1.5f);
 
+            // The furniture too. Decay is judged the same way she is — by
+            // looking at it — and a cobweb is far too small to read in a shot of
+            // a whole room.
+            foreach (var (name, prop) in Props())
+            {
+                var at = prop.transform.position;
+                Shoot(at, folder, name, ClearSideOf(at, 2.8f) + Vector3.up * 1.7f, 0.7f);
+            }
+
             Debug.Log($"[Portrait] done — {folder}");
+        }
+
+        /// <summary>One of each kind of furniture, whichever is found first.</summary>
+        static System.Collections.Generic.IEnumerable<(string, GameObject)> Props()
+        {
+            var wanted = new[] { "Wardrobe", "Bed", "Dresser" };
+
+            foreach (var name in wanted)
+            {
+                foreach (var transform in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+                {
+                    if (!transform.name.StartsWith(name + "_")) continue;
+                    if (transform.parent != null && transform.parent.name == "Furnishings")
+                    {
+                        yield return (name.ToLowerInvariant(), transform.gameObject);
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Where to stand to photograph something that is probably against a wall.
+        ///
+        /// A fixed camera offset works for the one prop it was tuned on and puts
+        /// the camera inside the plaster for every other. This looks around the
+        /// subject for the direction with the most room and backs off down it,
+        /// which is what a person with a camera would do.
+        /// </summary>
+        static Vector3 ClearSideOf(Vector3 subject, float wanted)
+        {
+            var eye = subject + Vector3.up * 1.1f;
+            var best = Vector3.back * wanted;
+            var bestRoom = -1f;
+
+            for (var i = 0; i < 16; i++)
+            {
+                var angle = i / 16f * Mathf.PI * 2f;
+                var direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+
+                var room = Physics.Raycast(eye, direction, out var hit, wanted + 0.6f,
+                    ~0, QueryTriggerInteraction.Ignore)
+                    ? hit.distance - 0.5f
+                    : wanted;
+
+                if (room <= bestRoom) continue;
+
+                bestRoom = room;
+                best = direction * Mathf.Clamp(room, 1.1f, wanted);
+            }
+
+            return best;
         }
 
         static void Shoot(Vector3 subject, string folder, string name, Vector3 offset, float lookHeight)

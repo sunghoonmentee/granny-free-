@@ -248,6 +248,23 @@ namespace Granny.EditorTools
             var head = Box("Headboard", root.transform, new Vector3(0f, 0.65f, -1.05f), new Vector3(1.3f, 0.9f, 0.1f), frame);
             head.layer = GameLayers.Prop;
 
+            if (AddModel(root, "old_bed_frame", GameLayers.HidingSpot))
+            {
+                legs.GetComponent<MeshRenderer>().enabled = false;
+                head.GetComponent<MeshRenderer>().enabled = false;
+
+                // The mattress stays, because the model is a bare sprung frame
+                // and the gap underneath has to have something over it or going
+                // under the bed is going under a table. But it has to fit the
+                // frame: built to the old box bed it overhung on every side and
+                // read as a slab balanced on a trolley.
+                var bedding = mattress.transform;
+                bedding.localPosition = new Vector3(0f, 0.37f, 0f);
+                bedding.localScale = new Vector3(0.84f, 0.16f, 1.92f);
+
+                DecayBuilder.Weather(root, seed: 8817, webs: 3);
+            }
+
             // Flat on the floor under the frame, looking out along the room.
             var viewpoint = new GameObject("Viewpoint").transform;
             viewpoint.SetParent(root.transform, false);
@@ -390,6 +407,16 @@ namespace Granny.EditorTools
 
             var doorPanel = Box("DoorPanel", root.transform, new Vector3(0f, 1.05f, 0.14f), new Vector3(1.15f, 2.0f, 0.06f), wood);
             doorPanel.layer = GameLayers.HidingSpot;
+
+            // A real wardrobe, if one has been downloaded. The boxes above stay
+            // as the shape the player bumps into and the interaction ray finds;
+            // they just stop being the thing anybody looks at.
+            if (AddModel(root, "GothicCabinet_01", GameLayers.HidingSpot, 180f))
+            {
+                body.GetComponent<MeshRenderer>().enabled = false;
+                doorPanel.GetComponent<MeshRenderer>().enabled = false;
+                DecayBuilder.Weather(root, seed: 4021, webs: 4);
+            }
 
             var viewpoint = new GameObject("Viewpoint").transform;
             viewpoint.SetParent(root.transform, false);
@@ -717,6 +744,60 @@ namespace Granny.EditorTools
         }
 
         /// <summary>Assigns a private [SerializeField] without widening its API.</summary>
+        /// <summary>
+        /// Puts a downloaded model into a prop as its visual, and says whether
+        /// there was one to put in.
+        ///
+        /// The gameplay parts — colliders, anchors, the components themselves —
+        /// stay exactly as they were and keep their own boxes. A model is a
+        /// picture of a wardrobe; what the player collides with and what the
+        /// raycast finds should not change because an artist shipped a new mesh.
+        /// </summary>
+        static bool AddModel(GameObject prop, string asset, int layer, float yaw = 0f)
+        {
+            var path = $"Assets/_Project/Art/Models/{asset}/{asset}.fbx";
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+            if (model == null) return false;
+
+            var visual = (GameObject)PrefabUtility.InstantiatePrefab(model, prop.transform);
+            visual.name = "Model";
+            visual.transform.localPosition = Vector3.zero;
+
+            // Multiplied, never assigned. Unity bakes an axis conversion into the
+            // imported prefab's own rotation — these come out of Blender Z-up —
+            // and assigning a yaw over the top of it threw that away and stood
+            // the bed frame on its end.
+            visual.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * visual.transform.localRotation;
+
+            // Nobody else's model is modelled around our origin. These come in
+            // with their pivot wherever the artist left it, which put the bed
+            // frame half a metre off the mattress it is supposed to be holding.
+            // Centre it horizontally on the prop and stand it on the floor.
+            var renderers = visual.GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 0)
+            {
+                var bounds = renderers[0].bounds;
+                foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
+
+                var origin = prop.transform.position;
+                visual.transform.localPosition -= new Vector3(
+                    bounds.center.x - origin.x,
+                    bounds.min.y - origin.y,
+                    bounds.center.z - origin.z);
+            }
+
+            foreach (var child in visual.GetComponentsInChildren<Transform>())
+                child.gameObject.layer = layer;
+
+            // The model is scenery. Its own colliders would fight the box the
+            // prop already uses, which is sized and placed on purpose.
+            foreach (var collider in visual.GetComponentsInChildren<Collider>())
+                Object.DestroyImmediate(collider);
+
+            return true;
+        }
+
         static void SetEnum(Object target, string fieldName, int value)
         {
             var so = new SerializedObject(target);
