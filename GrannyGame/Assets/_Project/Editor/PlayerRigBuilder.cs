@@ -110,6 +110,8 @@ namespace Granny.EditorTools
             var inventory = root.AddComponent<PlayerInventory>();
             var crossbow = root.AddComponent<Crossbow>();
             var injury = root.AddComponent<PlayerInjury>();
+            root.AddComponent<AudioSource>();
+            root.AddComponent<HidingHeartbeat>();
             var torch = torchGo.AddComponent<PlayerFlashlight>();
 
             Wire(input, "actions", actions);

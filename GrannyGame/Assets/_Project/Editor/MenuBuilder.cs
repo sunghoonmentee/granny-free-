@@ -62,7 +62,14 @@ namespace Granny.EditorTools
             var continueButton = Button("Continue", root2.transform, font, new Vector2(0f, 60f), "Continue");
             var newRunButton = Button("NewRun", root2.transform, font, new Vector2(0f, 0f), "New run");
             var difficultyButton = Button("Difficulty", root2.transform, font, new Vector2(0f, -60f), "Difficulty   Normal");
-            var quitButton = Button("Quit", root2.transform, font, new Vector2(0f, -120f), "Quit");
+
+            // The two modes sit under the difficulty because they are read the
+            // same way — a line of text you cycle — but they are not difficulties
+            // and either can be turned on at any setting.
+            var darkButton = Button("DarkMode", root2.transform, font, new Vector2(0f, -120f), "Dark house   off");
+            var locksButton = Button("ExtraLocks", root2.transform, font, new Vector2(0f, -180f), "Extra locks   off");
+
+            var quitButton = Button("Quit", root2.transform, font, new Vector2(0f, -250f), "Quit");
 
             var (confirmPanel, confirmYes, confirmNo) = ConfirmDialog(root2.transform, font);
 
@@ -72,6 +79,10 @@ namespace Granny.EditorTools
             BuildKit.Wire(controller, "quitButton", quitButton);
             BuildKit.Wire(controller, "difficultyButton", difficultyButton);
             BuildKit.Wire(controller, "difficultyLabel", difficultyButton.GetComponentInChildren<Text>());
+            BuildKit.Wire(controller, "darkButton", darkButton);
+            BuildKit.Wire(controller, "darkLabel", darkButton.GetComponentInChildren<Text>());
+            BuildKit.Wire(controller, "locksButton", locksButton);
+            BuildKit.Wire(controller, "locksLabel", locksButton.GetComponentInChildren<Text>());
             BuildKit.Wire(controller, "confirmPanel", confirmPanel);
             BuildKit.Wire(controller, "confirmButton", confirmYes);
             BuildKit.Wire(controller, "cancelButton", confirmNo);
