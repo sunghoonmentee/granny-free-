@@ -115,6 +115,35 @@ namespace Granny.EditorTools
             return built;
         }
 
+        /// <summary>
+        /// Hands the poser its bones. Wired explicitly rather than looked up by
+        /// name at runtime, so a renamed bone is a compile-time or inspector
+        /// problem rather than a limb that silently stops moving.
+        /// </summary>
+        static void WirePose(AgataPose pose, AgataBuilder.Rig rig)
+        {
+            var so = new SerializedObject(pose);
+
+            void Set(string field, Transform bone) =>
+                so.FindProperty(field).objectReferenceValue = bone;
+
+            Set("body", rig.Root);
+            Set("spine", rig.Spine);
+            Set("chest", rig.Chest);
+            Set("neck", rig.Neck);
+            Set("head", rig.Head);
+            Set("armL", rig.ArmL);
+            Set("forearmL", rig.ForearmL);
+            Set("armR", rig.ArmR);
+            Set("forearmR", rig.ForearmR);
+            Set("thighL", rig.ThighL);
+            Set("shinL", rig.ShinL);
+            Set("thighR", rig.ThighR);
+            Set("shinR", rig.ShinR);
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         // ------------------------------------------------------------------
         // The hunter
         // ------------------------------------------------------------------
@@ -125,31 +154,12 @@ namespace Granny.EditorTools
             root.layer = GameLayers.Granny;
             root.tag = "Granny";
 
-            // A stand-in body until there is a real model. The proportions matter
-            // more than the looks: she has to read as person-shaped at a distance
-            // and fit through the same doorways as the player.
-            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            body.name = "Body";
-            body.transform.SetParent(root.transform, false);
-            body.transform.localPosition = new Vector3(0f, 0.9f, 0f);
-            body.transform.localScale = new Vector3(0.55f, 0.9f, 0.55f);
-            body.layer = GameLayers.Granny;
-            Object.DestroyImmediate(body.GetComponent<Collider>());
-            body.GetComponent<MeshRenderer>().sharedMaterial =
-                EnsureMaterial("GrannyBody", new Color(0.42f, 0.13f, 0.14f));
-
-            var eye = new GameObject("Eye").transform;
-            eye.SetParent(root.transform, false);
-            eye.localPosition = new Vector3(0f, 1.62f, 0.1f);
-
-            var marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            marker.name = "EyeMarker";
-            marker.transform.SetParent(eye, false);
-            marker.transform.localScale = Vector3.one * 0.12f;
-            marker.layer = GameLayers.Granny;
-            Object.DestroyImmediate(marker.GetComponent<Collider>());
-            marker.GetComponent<MeshRenderer>().sharedMaterial =
-                EnsureMaterial("GrannyEye", new Color(1f, 0.85f, 0.2f));
+            // A jointed figure rather than a capsule: bent forward, arms too
+            // long, eyes that catch what little light the house has. What she
+            // looks like up close matters far less than what her outline does at
+            // the end of a corridor, and the outline is the part built here.
+            var rig = AgataBuilder.Build(root.transform, GameLayers.Granny);
+            var eye = rig.Eye;
 
             var agent = root.AddComponent<NavMeshAgent>();
             agent.radius = 0.34f;
@@ -188,6 +198,8 @@ namespace Granny.EditorTools
 
             root.AddComponent<GrannyBrain>();
             root.AddComponent<GrannyVoice>();
+
+            WirePose(root.AddComponent<AgataPose>(), rig);
 
             var saved = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out var ok);
             Object.DestroyImmediate(root);

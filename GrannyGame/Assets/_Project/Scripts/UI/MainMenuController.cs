@@ -19,6 +19,15 @@ namespace Granny.UI
         [SerializeField] Button newRunButton;
         [SerializeField] Button quitButton;
 
+        [Header("Modes")]
+        [Tooltip("The house with the lights almost out.")]
+        [SerializeField] Button darkButton;
+        [SerializeField] Text darkLabel;
+
+        [Tooltip("Every fastening on the front door, whatever the difficulty.")]
+        [SerializeField] Button locksButton;
+        [SerializeField] Text locksLabel;
+
         [Header("Difficulty")]
         [SerializeField] Button difficultyButton;
         [SerializeField] Text difficultyLabel;
@@ -47,6 +56,16 @@ namespace Granny.UI
             if (newRunButton != null) newRunButton.onClick.AddListener(RequestNewRun);
             if (quitButton != null) quitButton.onClick.AddListener(Quit);
             if (difficultyButton != null) difficultyButton.onClick.AddListener(CycleDifficulty);
+
+            if (darkButton != null)
+                darkButton.onClick.AddListener(() => { GameModes.Dark = !GameModes.Dark; Refresh(); });
+
+            if (locksButton != null)
+                locksButton.onClick.AddListener(() =>
+                {
+                    GameModes.ExtraLocks = !GameModes.ExtraLocks;
+                    Refresh();
+                });
             if (confirmButton != null) confirmButton.onClick.AddListener(StartNewRun);
             if (cancelButton != null) cancelButton.onClick.AddListener(() => ShowConfirm(false));
 
@@ -68,6 +87,14 @@ namespace Granny.UI
 
             if (difficultyLabel != null && difficultyNames.Length > 0)
                 difficultyLabel.text = $"Difficulty   {difficultyNames[difficultyIndex]}";
+
+            // Spelled out rather than ticked, because a tick in a menu this
+            // sparse is easy to miss and both of these change the whole night.
+            if (darkLabel != null)
+                darkLabel.text = GameModes.Dark ? "Dark house   ON" : "Dark house   off";
+
+            if (locksLabel != null)
+                locksLabel.text = GameModes.ExtraLocks ? "Extra locks   ON" : "Extra locks   off";
         }
 
         void CycleDifficulty()

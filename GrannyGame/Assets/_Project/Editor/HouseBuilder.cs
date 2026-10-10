@@ -868,6 +868,10 @@ namespace Granny.EditorTools
         {
             var root = new GameObject("Audio").transform;
 
+            // Lives beside the speaker: both are house-wide switches rather than
+            // things that belong to any one room.
+            root.gameObject.AddComponent<DarkMode>();
+
             var world = root.gameObject.AddComponent<WorldAudio>();
             var bank = AssetDatabase.LoadAssetAtPath<SoundBank>("Assets/_Project/Audio/SoundBank.asset");
 
