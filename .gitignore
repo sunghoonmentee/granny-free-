@@ -85,3 +85,7 @@ unity-logs/
 # Unity test runner scratch scene
 GrannyGame/Assets/InitTestScene*.unity
 GrannyGame/Assets/InitTestScene*.unity.meta
+
+# Texture set archives. The maps we use are extracted into the project; the
+# zips are 83 MB of mostly displacement maps we do not.
+downloads/

@@ -43,6 +43,11 @@ namespace Granny.EditorTools
 
             MenuBuilder.Run();
 
+            // Last, and deliberately so. Every builder above creates or rewrites
+            // the materials it uses as flat colours; texturing them first would
+            // simply be undone. This gets the final word on how a surface looks.
+            TextureBuilder.Run();
+
             Debug.Log("[Rebuild] done");
         }
     }
