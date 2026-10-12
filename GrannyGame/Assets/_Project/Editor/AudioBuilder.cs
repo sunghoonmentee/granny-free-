@@ -32,6 +32,7 @@ namespace Granny.EditorTools
 
             Write("creak", Creak());
             Write("bell", Bell());
+            Write("crow", Caw());
             Write("trap", TrapSnap());
             Write("breakage", Breakage());
             Write("item_impact", ItemImpact());
@@ -67,6 +68,7 @@ namespace Granny.EditorTools
         {
             (NoiseKind.Creak, "creak", 0.85f, 0.14f),
             (NoiseKind.Bell, "bell", 1.00f, 0.03f),
+            (NoiseKind.Crow, "crow", 0.95f, 0.07f),
             (NoiseKind.Trap, "trap", 1.00f, 0.06f),
             (NoiseKind.Breakage, "breakage", 1.00f, 0.10f),
             (NoiseKind.ItemImpact, "item_impact", 0.80f, 0.16f),
@@ -148,6 +150,45 @@ namespace Granny.EditorTools
         }
 
         /// <summary>A bell: two close partials ringing out over a second and a half.</summary>
+        /// <summary>
+        /// Three harsh cries, each falling in pitch.
+        ///
+        /// The fall is what makes it a caw rather than a shout, and the noise on
+        /// top of it is most of the rest: a crow is nearly all harmonics and
+        /// hardly any tone, so a clean oscillator sounds like a toy duck.
+        /// </summary>
+        static float[] Caw()
+        {
+            var samples = Buffer(1.5f);
+            var rng = new System.Random(157);
+
+            foreach (var start in new[] { 0f, 0.40f, 0.83f })
+            {
+                var from = (int)(start * SampleRate);
+                var length = (int)(0.30f * SampleRate);
+
+                for (var i = 0; i < length && from + i < samples.Length; i++)
+                {
+                    var life = (float)i / length;
+                    var t = (float)i / SampleRate;
+
+                    var pitch = Mathf.Lerp(640f, 370f, life);
+                    var phase = 2f * Mathf.PI * pitch * t;
+
+                    var tone = Mathf.Sign(Mathf.Sin(phase)) * 0.40f
+                               + Mathf.Sin(phase * 2f) * 0.28f
+                               + Mathf.Sin(phase * 3.4f) * 0.18f;
+
+                    var rasp = (float)(rng.NextDouble() * 2.0 - 1.0) * 0.34f;
+
+                    // In and out, so each cry has a throat rather than a switch.
+                    samples[from + i] += (tone + rasp) * Mathf.Sin(Mathf.PI * life) * 0.5f;
+                }
+            }
+
+            return samples;
+        }
+
         static float[] Bell()
         {
             var samples = Buffer(1.6f);

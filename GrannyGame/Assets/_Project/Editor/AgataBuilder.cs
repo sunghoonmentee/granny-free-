@@ -67,7 +67,12 @@ namespace Granny.EditorTools
             var apron = Material("AgataApron", new Color(0.11f, 0.10f, 0.09f));
             var hair = Material("AgataHair", new Color(0.80f, 0.79f, 0.77f));
             var iron = Material("AgataIron", new Color(0.13f, 0.13f, 0.14f));
-            var eyes = Material("AgataEyes", new Color(0.92f, 0.94f, 0.88f), emissive: 1.6f);
+            var eyes = Material("AgataEyes", new Color(0.92f, 0.94f, 0.88f), emissive: 2.8f);
+
+            // The inside of her: eye sockets and an open mouth. Near black rather
+            // than black, so the shape of the hole still reads when a bulb is
+            // directly on her instead of flattening to a sticker.
+            var hollow = Material("AgataHollow", new Color(0.035f, 0.03f, 0.03f));
 
             var rig = new Rig();
 
@@ -101,6 +106,14 @@ namespace Granny.EditorTools
             Shape("Bib", rig.Chest, new Vector3(0f, ChestLength * 0.45f, 0.105f),
                 new Vector3(0.22f, ChestLength * 0.8f, 0.02f), apron, layer);
 
+            // A shawl over the shoulders. Dark, wide and square across the top: it
+            // turns the hunch into a silhouette you can recognise at the far end
+            // of a corridor, before any of the face resolves.
+            Shape("Shawl", rig.Chest, new Vector3(0f, ChestLength * 0.82f, -0.012f),
+                new Vector3(0.385f, 0.15f, 0.25f), apron, layer);
+            Shape("ShawlBack", rig.Chest, new Vector3(0f, ChestLength * 0.5f, -0.1f),
+                new Vector3(0.36f, ChestLength * 0.75f, 0.05f), apron, layer);
+
             // The head is counter-rotated so she still looks where she is going
             // despite the hunch: chin up, eyes under the brow. It is the single
             // thing that stops her reading as a hat stand.
@@ -117,16 +130,77 @@ namespace Granny.EditorTools
             Shape("Bun", rig.Head, new Vector3(0f, 0.20f, -0.07f), new Vector3(0.16f, 0.13f, 0.14f), hair, layer);
             Shape("Braid", rig.Head, new Vector3(0.07f, 0.02f, -0.09f), new Vector3(0.06f, 0.30f, 0.06f), hair, layer);
 
-            // A brow over them, so the eyes sit in shadow and catch the light as
-            // two points rather than washing out with the rest of the face. In a
-            // dark corridor they are the first thing the player sees of her, and
-            // usually the only thing.
-            Shape("Brow", rig.Head, new Vector3(0f, 0.165f, 0.085f),
-                new Vector3(0.20f, 0.05f, 0.08f), skin, layer);
+            // Loose strands that have come down out of it, at uneven lengths. Hair
+            // that is all one length is a wig; hair that is not is somebody who
+            // has not looked in a mirror for a long time.
+            for (var strand = 0; strand < 7; strand++)
+            {
+                var across = Mathf.Lerp(-0.093f, 0.093f, strand / 6f);
+                var back = -0.086f + (strand % 2) * 0.022f;
+                var length = 0.21f + (strand % 3) * 0.07f;
 
-            rig.Eye = Bone("Eye", rig.Head, new Vector3(0f, 0.125f, 0.095f));
-            Ball("EyeL", rig.Eye, new Vector3(-0.047f, 0f, 0f), 0.042f, eyes, layer);
-            Ball("EyeR", rig.Eye, new Vector3(0.047f, 0f, 0f), 0.042f, eyes, layer);
+                Shape($"Strand_{strand}", rig.Head,
+                    new Vector3(across, 0.145f - length * 0.5f, back),
+                    new Vector3(0.021f, length, 0.019f), hair, layer);
+            }
+
+            // Two in front, falling past the sockets, so the face is partly behind
+            // something whichever way she is turned.
+            Shape("Lock_L", rig.Head, new Vector3(-0.093f, 0.07f, 0.045f),
+                new Vector3(0.023f, 0.22f, 0.03f), hair, layer);
+            Shape("Lock_R", rig.Head, new Vector3(0.096f, 0.095f, 0.03f),
+                new Vector3(0.02f, 0.17f, 0.028f), hair, layer);
+
+            // ---- the face -------------------------------------------------
+            //
+            // She had a brow and two eyeballs and nothing else, and what that
+            // reads as from across a room is a wooden mannequin: a head-shaped
+            // object rather than a head. The pieces below are the cheapest set
+            // that makes a face frightening rather than merely absent — sockets,
+            // a nose, and a mouth that is open.
+            //
+            // It is all boxes. That is not a compromise being apologised for: at
+            // the distance and the light level she is actually seen at, what
+            // carries is the arrangement of dark holes and pale edges, and boxes
+            // do that as well as anything.
+
+            // Sunken sockets first, so the eyes sit in pits. The old brow was set
+            // so far forward that it covered them completely — the one feature
+            // meant to find her in the dark was behind her own forehead.
+            Shape("SocketL", rig.Head, new Vector3(-0.048f, 0.128f, 0.085f),
+                new Vector3(0.088f, 0.08f, 0.055f), hollow, layer);
+            Shape("SocketR", rig.Head, new Vector3(0.048f, 0.128f, 0.085f),
+                new Vector3(0.088f, 0.08f, 0.055f), hollow, layer);
+
+            // A heavy brow above them, and gaunt cheekbones below. Between them
+            // the sockets stay in shadow from every angle that matters.
+            Shape("Brow", rig.Head, new Vector3(0f, 0.179f, 0.079f),
+                new Vector3(0.205f, 0.048f, 0.072f), skin, layer);
+            Shape("CheekL", rig.Head, new Vector3(-0.077f, 0.092f, 0.068f),
+                new Vector3(0.048f, 0.082f, 0.078f), skin, layer);
+            Shape("CheekR", rig.Head, new Vector3(0.077f, 0.092f, 0.068f),
+                new Vector3(0.048f, 0.082f, 0.078f), skin, layer);
+
+            // A long nose with a hook on the end. More than anything else here it
+            // is what stops the head reading as a block with marks on it.
+            Shape("Nose", rig.Head, new Vector3(0f, 0.101f, 0.108f),
+                new Vector3(0.042f, 0.088f, 0.058f), skin, layer);
+            Shape("NoseTip", rig.Head, new Vector3(0f, 0.063f, 0.123f),
+                new Vector3(0.036f, 0.032f, 0.05f), skin, layer);
+
+            // Open, and left open. A closed mouth is a face at rest; this one is
+            // a hole, and a hole is the thing the eye finds first.
+            Shape("Mouth", rig.Head, new Vector3(0f, 0.028f, 0.097f),
+                new Vector3(0.092f, 0.056f, 0.042f), hollow, layer);
+            Shape("Teeth", rig.Head, new Vector3(0f, 0.046f, 0.102f),
+                new Vector3(0.058f, 0.013f, 0.032f), skin, layer);
+
+            // The eyes themselves, smaller and brighter than before: two points
+            // rather than two discs. In a dark corridor they are the first thing
+            // the player sees of her, and usually the only thing.
+            rig.Eye = Bone("Eye", rig.Head, new Vector3(0f, 0.128f, 0.094f));
+            Ball("EyeL", rig.Eye, new Vector3(-0.048f, 0f, 0f), 0.034f, eyes, layer);
+            Ball("EyeR", rig.Eye, new Vector3(0.048f, 0f, 0f), 0.034f, eyes, layer);
 
             // ---- arms -----------------------------------------------------
             // Hung from the chest and rotated out, long enough that her hands
@@ -270,6 +344,13 @@ namespace Granny.EditorTools
             {
                 material.EnableKeyword("_EMISSION");
                 material.SetColor("_EmissionColor", colour * emissive);
+
+                // Without this the emission is set and does not show. A material
+                // made in code carries the "emissive is black" lightmap flag, and
+                // Unity honours it over the colour — which is why her eyes have
+                // been two dull grey beads in every photograph rather than the one
+                // thing you can see of her in the dark.
+                material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             }
 
             EditorUtility.SetDirty(material);

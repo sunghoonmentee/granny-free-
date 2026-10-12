@@ -21,6 +21,10 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: f29ae71f48412d645911c9abe6a20777, type: 3}
     volume: 1
     pitchJitter: 0.03
+  - kind: 12
+    clip: {fileID: 8300000, guid: 4aa10e8f71afa0c48bb59dd54de899b9, type: 3}
+    volume: 0.95
+    pitchJitter: 0.07
   - kind: 6
     clip: {fileID: 8300000, guid: 1b1210f3876a1ee408c3f0dbc0111bca, type: 3}
     volume: 1

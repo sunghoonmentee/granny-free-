@@ -44,6 +44,9 @@ namespace Granny.Core
 
         /// <summary>A bell on a tripwire.</summary>
         Bell,
+
+        /// <summary>A crow, shouting about you.</summary>
+        Crow,
     }
 
     /// <summary>One sound, somewhere in the house.</summary>
@@ -99,6 +102,7 @@ namespace Granny.Core
             NoiseKind.Trap => true,
             NoiseKind.Creak => true,
             NoiseKind.Bell => true,
+            NoiseKind.Crow => true,
             NoiseKind.DoorMove => DoorMovementAudible,
             _ => false,
         };

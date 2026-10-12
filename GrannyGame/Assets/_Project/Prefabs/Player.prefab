@@ -33,6 +33,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8554536505734197716}
+  - {fileID: 4306114795969175887}
   m_Father: {fileID: 2837561311020482569}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &1913246893339401966
@@ -44,8 +45,8 @@ Camera:
   m_GameObject: {fileID: 161043142425435411}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -254,6 +255,58 @@ MonoBehaviour:
   flickerThreshold: 0.15
   fullIntensity: 3.2
   warmupSpeed: 14
+--- !u!1 &2665904768774989614
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4306114795969175887}
+  - component: {fileID: 5367082253538052521}
+  m_Layer: 0
+  m_Name: Hand
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4306114795969175887
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2665904768774989614}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3341144306727331841}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5367082253538052521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2665904768774989614}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39cdab867210d264b9780bb641e14966, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Granny.Gameplay::Granny.Gameplay.Player.HandView
+  inventory: {fileID: 3443100705337497205}
+  motor: {fileID: 7253665279723020907}
+  restPosition: {x: 0.3, y: -0.27, z: 0.46}
+  restRotation: {x: 10, y: 18, z: 34}
+  scale: 1
+  bob: 0.016
+  sway: 0.03
+  settle: 9
 --- !u!1 &3596155326804334240
 GameObject:
   m_ObjectHideFlags: 0

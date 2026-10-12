@@ -259,24 +259,93 @@ namespace Granny.EditorTools
         /// that nothing arrives at — a hall left open to the floor above — wants
         /// railing on all four sides instead.
         /// </summary>
+        /// <summary>
+        /// A banister round a stairwell: newel posts, a handrail, and spindles.
+        ///
+        /// This used to be four solid boards a metre high, and in a photograph of
+        /// the parlour it read as a livestock pen standing in somebody's front
+        /// room. It also walled off the one thing the open hall was built for —
+        /// from the landing you are supposed to be able to see the front door you
+        /// are working towards, and anything in the hall is supposed to be able to
+        /// see you leaning over the rail.
+        ///
+        /// The spindles are 0.22 m apart, which looks like a staircase and is far
+        /// too narrow for anyone to walk through: the navigation bake erodes every
+        /// gap by the agent's radius, and 0.3 m of radius closes 0.22 m of gap
+        /// long before anybody tries it.
+        /// </summary>
         public static void Railing(Transform parent, string name, Rect hole, float floorY,
             Material material, int layer, float height = 1.0f, bool north = false)
         {
-            const float thickness = 0.1f;
-            var centreY = floorY + height * 0.5f;
+            const float post = 0.11f;
+            const float spindle = 0.04f;
+            const float spacing = 0.22f;
+            const float railDepth = 0.07f;
 
-            Box(parent, $"{name}_W", new Vector3(hole.xMin - thickness * 0.5f, centreY, hole.center.y),
-                new Vector3(thickness, height, hole.height), material, layer);
+            var rail = new GameObject(name).transform;
+            rail.SetParent(parent, false);
 
-            Box(parent, $"{name}_E", new Vector3(hole.xMax + thickness * 0.5f, centreY, hole.center.y),
-                new Vector3(thickness, height, hole.height), material, layer);
+            void Side(string side, Vector3 from, Vector3 to)
+            {
+                var along = to - from;
+                var length = along.magnitude;
+                if (length < 0.01f) return;
 
-            Box(parent, $"{name}_S", new Vector3(hole.center.x, centreY, hole.yMin - thickness * 0.5f),
-                new Vector3(hole.width + thickness * 2f, height, thickness), material, layer);
+                var direction = along / length;
+                var centre = (from + to) * 0.5f;
+                var across = new Vector3(Mathf.Abs(direction.z), 0f, Mathf.Abs(direction.x));
+                var span = direction * length + across * railDepth;
+                var size = new Vector3(Mathf.Abs(span.x), 0f, Mathf.Abs(span.z));
+
+                // Handrail along the top, and a thinner one near the floor for the
+                // spindles to stand on.
+                Box(rail, $"{side}_Rail", new Vector3(centre.x, floorY + height - 0.04f, centre.z),
+                    new Vector3(size.x, 0.08f, size.z), material, layer);
+
+                Box(rail, $"{side}_Kick", new Vector3(centre.x, floorY + 0.07f, centre.z),
+                    new Vector3(size.x, 0.1f, size.z), material, layer);
+
+                var count = Mathf.Max(1, Mathf.RoundToInt(length / spacing));
+
+                for (var i = 1; i < count; i++)
+                {
+                    var at = from + direction * (length * i / count);
+
+                    Box(rail, $"{side}_Spindle_{i}",
+                        new Vector3(at.x, floorY + height * 0.5f, at.z),
+                        new Vector3(spindle, height - 0.1f, spindle), material, layer);
+                }
+            }
+
+            var west = hole.xMin - post * 0.5f;
+            var east = hole.xMax + post * 0.5f;
+            var south = hole.yMin - post * 0.5f;
+            var northEdge = hole.yMax + post * 0.5f;
+
+            Side("W", new Vector3(west, 0f, south), new Vector3(west, 0f, northEdge));
+            Side("E", new Vector3(east, 0f, south), new Vector3(east, 0f, northEdge));
+            Side("S", new Vector3(west, 0f, south), new Vector3(east, 0f, south));
 
             if (north)
-                Box(parent, $"{name}_N", new Vector3(hole.center.x, centreY, hole.yMax + thickness * 0.5f),
-                    new Vector3(hole.width + thickness * 2f, height, thickness), material, layer);
+                Side("N", new Vector3(west, 0f, northEdge), new Vector3(east, 0f, northEdge));
+
+            // Newels at the corners, standing proud of the handrail, which is what
+            // stops the whole thing reading as a fence — but never on the side
+            // that was deliberately left open. That side is where the flight
+            // arrives, and a post on each shoulder of it is two obstacles in the
+            // one doorway nobody can go round.
+            var corners = north
+                ? new[]
+                {
+                    new Vector3(west, 0f, south), new Vector3(east, 0f, south),
+                    new Vector3(west, 0f, northEdge), new Vector3(east, 0f, northEdge),
+                }
+                : new[] { new Vector3(west, 0f, south), new Vector3(east, 0f, south) };
+
+            foreach (var corner in corners)
+                Box(rail, $"Newel_{corner.x:F1}_{corner.z:F1}",
+                    new Vector3(corner.x, floorY + (height + 0.12f) * 0.5f, corner.z),
+                    new Vector3(post, height + 0.12f, post), material, layer);
         }
 
         static void Segment(Transform parent, string name, Vector3 start, Vector3 direction,
@@ -323,6 +392,32 @@ namespace Granny.EditorTools
         }
 
         /// <summary>A dim bulb. The house is meant to be lit in pools, not evenly.</summary>
+        /// <summary>
+        /// Dim, warm, and readable.
+        ///
+        /// The first pass was unplayable — ambient at 0.035 is black — and the
+        /// correction overshot into a cold grey-blue 0.16 that lit every room
+        /// evenly from nowhere. A photograph of it looks like moonlight on a
+        /// building site. The fix is not more ambient but less: the house has two
+        /// dozen bulbs in it, and the light should come from them, in pools, warm,
+        /// with real dark in between. Ambient only has to keep the dark from being
+        /// a wall.
+        ///
+        /// Warm, too, and that matters more than the level. A neutral ambient over
+        /// amber bulbs reads as a cold house someone has left a lamp on in. The
+        /// house should read as somebody's house.
+        /// </summary>
+        public static void Atmosphere()
+        {
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.112f, 0.098f, 0.080f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = new Color(0.035f, 0.030f, 0.025f);
+            RenderSettings.fogDensity = 0.019f;
+            RenderSettings.skybox = null;
+        }
+
         public static Light Bulb(Transform parent, string name, Vector3 position,
             Color colour, float intensity, float range)
         {

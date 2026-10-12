@@ -82,6 +82,13 @@ namespace Granny.EditorTools
             cam.farClipPlane = 90f;
             cam.fieldOfView = 68f;
 
+            // Black, never the sky. A camera left on its default clear fills any
+            // gap in the geometry with the procedural daytime skybox, so a seam
+            // between two slabs stops being a seam and becomes a window onto a
+            // blue afternoon in the middle of the night.
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = Color.black;
+
             // URP adds this itself the moment a Camera exists; ask for it rather
             // than adding a second one.
             var camData = cam.GetUniversalAdditionalCameraData();
@@ -102,6 +109,13 @@ namespace Granny.EditorTools
             beam.shadows = LightShadows.Soft;
             beam.enabled = false;
 
+            // What you are carrying, where you can see it. A child of the camera
+            // rather than of the bob target, so the hand keeps the camera's pitch
+            // and does its own swaying — a hand that inherits the head bob as
+            // well bobs twice.
+            var handGo = new GameObject("Hand");
+            handGo.transform.SetParent(cameraGo.transform, false);
+
             var input = root.AddComponent<PlayerInputReader>();
             var motor = root.AddComponent<PlayerMotor>();
             var look = root.AddComponent<PlayerLook>();
@@ -114,7 +128,12 @@ namespace Granny.EditorTools
             root.AddComponent<HidingHeartbeat>();
             var torch = torchGo.AddComponent<PlayerFlashlight>();
 
+            var hand = handGo.AddComponent<HandView>();
+
             Wire(input, "actions", actions);
+
+            Wire(hand, "inventory", inventory);
+            Wire(hand, "motor", motor);
 
             Wire(injury, "cameraPivot", pivot);
 

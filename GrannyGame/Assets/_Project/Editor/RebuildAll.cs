@@ -24,6 +24,11 @@ namespace Granny.EditorTools
         {
             Debug.Log("[Rebuild] start");
 
+            // Rendering first, because it is an asset everything else is judged
+            // through: a house looked at through a badly configured shadow map is
+            // a house that gets "fixed" in the wrong place.
+            ProjectBootstrap.TuneShadows();
+
             // Prefabs and data first: everything downstream loads them by path.
             ContentBuilder.Run();
             PlayerRigBuilder.Run();

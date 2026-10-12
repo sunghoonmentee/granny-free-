@@ -281,6 +281,8 @@ namespace Granny.EditorTools
             }
 
             mat.SetColor("_BaseColor", colour);
+            mat.SetFloat("_Smoothness", 0.1f);
+            mat.SetFloat("_Metallic", 0f);
             EditorUtility.SetDirty(mat);
             return mat;
         }

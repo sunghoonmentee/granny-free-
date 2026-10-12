@@ -58,7 +58,16 @@ namespace Granny.EditorTools
 
         // Kept inside the attic's smaller footprint; a well hanging off the edge
         // would put the top of the flight outside the floor it arrives at.
-        static readonly Rect AtticWell = new(-9.5f, 2f, AtticStairWidth, 6f);
+        // Moved a metre south of where it was. The flight used to arrive within
+        // 0.9 m of the attic's north wall, and after the agent's radius is eroded
+        // off both sides of that, what is left to step out into is a few
+        // centimetres. It survived for a while because it was *just* passable;
+        // putting a newel post at the top of the stairs closed it, and the whole
+        // attic came off the map with every square of it still showing floor.
+        //
+        // The fix is the clearance, not the post. A landing that only works to
+        // within a hand's width is one piece of furniture away from not working.
+        static readonly Rect AtticWell = new(-9.5f, 1f, AtticStairWidth, 6f);
 
         /// <summary>
         /// The hall, left open all the way to the first floor.
@@ -116,11 +125,21 @@ namespace Granny.EditorTools
             BuildStairs(house, palette);
 
             var furniture = Furnish(house, doorways);
+
+            // Before the bake, deliberately: what is in the way should be in the
+            // way for her too.
+            ClutterBuilder.Fill(house);
+
             BuildNoiseMakers();
             PlaceMarkers();
             BuildSpawner(furniture);
             BakeNavigation();
             PlacePlayer();
+
+            // Set here rather than once at bootstrap, because this is the scene
+            // it is about and a rebuild should restore the house's mood along with
+            // its walls.
+            BuildKit.Atmosphere();
 
             BuildKit.SaveScene(scene, "House");
 
@@ -182,18 +201,23 @@ namespace Granny.EditorTools
                 new Vector2(4f, Footprint.yMin), new Vector2(4f, Footprint.yMax),
                 BasementY, palette.Concrete, GameLayers.LevelGeometry, 6f, 14f);
 
+            // The cellar reads darker than the figure for each bulb suggests:
+            // concrete gives almost nothing back, and there is no floor above
+            // bouncing light around as there is upstairs. Brighter and reaching
+            // further than the rooms above, and it still comes out the gloomiest
+            // place in the house.
             BuildKit.Bulb(floor, "CellarBulb", new Vector3(-6f, BasementY + 2.7f, -4f),
-                new Color(1f, 0.80f, 0.55f), 3.2f, 13f);
-            BuildKit.Bulb(floor, "CellarBulbN", new Vector3(-6f, BasementY + 2.7f, 5f),
-                new Color(1f, 0.80f, 0.55f), 2.6f, 12f);
+                new Color(1f, 0.80f, 0.55f), 4.6f, 17f);
+            BuildKit.Bulb(floor, "CellarBulbN", new Vector3(-7f, BasementY + 2.7f, 5f),
+                new Color(1f, 0.80f, 0.55f), 4.2f, 16f);
             BuildKit.Bulb(floor, "StoreBulb", new Vector3(0f, BasementY + 2.7f, 0f),
-                new Color(1f, 0.80f, 0.55f), 2.8f, 13f);
+                new Color(1f, 0.80f, 0.55f), 3.8f, 15f);
             BuildKit.Bulb(floor, "BoilerBulb", new Vector3(8f, BasementY + 2.7f, -5f),
-                new Color(0.95f, 0.65f, 0.5f), 2.8f, 12f);
+                new Color(0.95f, 0.65f, 0.5f), 4.1f, 15f);
             BuildKit.Bulb(floor, "BoilerBulbN", new Vector3(8f, BasementY + 2.7f, 5f),
-                new Color(0.95f, 0.65f, 0.5f), 2.4f, 11f);
+                new Color(0.95f, 0.65f, 0.5f), 3.5f, 14f);
             BuildKit.Bulb(floor, "StairBulb", new Vector3(BasementWell.center.x, BasementY + 2.7f, -5f),
-                new Color(1f, 0.85f, 0.6f), 2.4f, 10f);
+                new Color(1f, 0.85f, 0.6f), 3.5f, 12f);
 
             return doorways;
         }
@@ -358,6 +382,21 @@ namespace Granny.EditorTools
             BuildKit.Slab(floor, "Roof", AtticFootprint, AtticY + BuildKit.FloorHeight,
                 palette.Ceiling, GameLayers.LevelGeometry);
 
+            // The attic is smaller than the house it sits on, which left the rooms
+            // under the ring between them open to the sky: standing in the guest
+            // room you could look up and see daylight over the wardrobe. Whatever
+            // else is wrong with a horror house, you must not be able to see out
+            // of it. The ring is boarded over at the attic's floor level, so every
+            // room on the first floor has a ceiling at the same height.
+            // Two holes, not one. The attic's stairwell runs from x -9.5 to -7.3
+            // while the attic floor itself only starts at x -9, so half a metre of
+            // that well sits out in the ring — and boarding the ring over without
+            // saying so dropped a lip across the top of the flight and cut the
+            // whole attic off from the house. Every square of it still had floor,
+            // which is why it looked fine; nothing could get to any of it.
+            BuildKit.Slab(floor, "UpperCeiling", Footprint, AtticY,
+                palette.Floor, GameLayers.LevelGeometry, AtticFootprint, AtticWell);
+
             BuildKit.Bulb(floor, "AtticBulb", new Vector3(0f, AtticY + 2.6f, 0f),
                 new Color(0.88f, 0.72f, 0.52f), 3.0f, 14f);
             BuildKit.Bulb(floor, "AtticBulbS", new Vector3(0f, AtticY + 2.6f, -4f),
@@ -469,10 +508,13 @@ namespace Granny.EditorTools
 
         static readonly Placement[] Wardrobes =
         {
-            new(-11.42f, GroundY, -5f, 90f),       // parlour
+            new(-4.75f, GroundY, -7.8f, -90f),     // parlour, on the hall wall
             new(11.42f, UpperY, -5f, -90f),        // guest room
             new(-11.42f, UpperY, 7f, 90f),         // the child's room
-            new(4.5f, AtticY, 6.4f, 180f),
+            // Back to the north wall. Standing out in the middle of the attic it
+            // was the one wardrobe in the house you could walk all the way round,
+            // and furniture in the open reads as furniture that was placed.
+            new(4.5f, AtticY, 8.2f, 180f),
         };
 
         /// <summary>
@@ -488,6 +530,70 @@ namespace Granny.EditorTools
             new(8f, UpperY, -6f, 270f),     // the guest room, where the day starts
             new(0f, UpperY, -6.5f, 0f),     // her room, off the landing
             new(-5.6f, UpperY, 7f, 270f),   // the child's room, clear of the attic flight
+        };
+
+        /// <summary>
+        /// Boarded windows, on the outside walls only.
+        ///
+        /// Placed clear of what already stands against those walls: the chests at
+        /// x = ±11.55, the wardrobes at ±11.42, and the bookshelves along the
+        /// south. The sill is at 1.15 m so a chest of drawers passes underneath
+        /// rather than through.
+        /// </summary>
+        static readonly Placement[] Windows =
+        {
+            // ground
+            new(-11.85f, GroundY, 8.5f, 90f),
+            new(-11.85f, GroundY, -2.5f, 90f),
+            new(11.85f, GroundY, 8.5f, -90f),
+            new(11.85f, GroundY, -2.5f, -90f),
+            new(-9f, GroundY, -9.85f, 0f),
+            new(7.5f, GroundY, -9.85f, 0f),
+
+            // first floor
+            new(-11.85f, UpperY, 3.5f, 90f),
+            new(-11.85f, UpperY, -8.5f, 90f),
+            new(11.85f, UpperY, 8.5f, -90f),
+            new(11.85f, UpperY, -1.5f, -90f),
+            new(-7f, UpperY, -9.85f, 0f),
+            new(9f, UpperY, -9.85f, 0f),
+            new(-2f, UpperY, 9.85f, 180f),
+            new(4f, UpperY, 9.85f, 180f),
+
+            // the attic, whose walls are drawn in to x = ±9, z = -7 to 9
+            new(-8.85f, AtticY, 3f, 90f),
+            new(8.85f, AtticY, -3f, -90f),
+        };
+
+        /// <summary>
+        /// Two birds, on the two routes that were otherwise free.
+        ///
+        /// One in the attic, which holds things worth climbing for and had no
+        /// reason to be frightening; one on the landing above the hall, where
+        /// everybody walks and nobody looks up. Deliberately not in a bedroom:
+        /// a hazard in a room you are sent to is a tax, and a hazard on a route
+        /// you chose is a decision.
+        /// </summary>
+        static readonly Placement[] Crows =
+        {
+            new(6.4f, AtticY, -6.6f, 180f),
+            new(3.6f, UpperY, 2.6f, -90f),
+        };
+
+        /// <summary>
+        /// Rugs, laid along the way people walk rather than squared to the rooms.
+        /// The hall pair run the length of the corridor, which is the direction
+        /// everybody moves in it.
+        /// </summary>
+        static readonly Placement[] Rugs =
+        {
+            new(0f, GroundY, 5.6f, 0f),
+            new(0f, GroundY, -5.4f, 0f),
+            new(-7.6f, GroundY, -5.2f, 90f),
+            new(8f, GroundY, -5.6f, 0f),
+            new(0f, UpperY, -2.6f, 0f),
+            new(-7.6f, UpperY, 4.6f, 90f),
+            new(8.4f, UpperY, 4.4f, 0f),
         };
 
         sealed class Furniture
@@ -511,17 +617,30 @@ namespace Granny.EditorTools
 
             var root = new GameObject("Furnishings").transform;
 
-            Place(dresserPrefab, Dressers, root, instance =>
+            Place(dresserPrefab, Dressers, root, webs: 2, onPlaced: instance =>
             {
                 var drawer = instance.GetComponent<Drawer>();
                 if (drawer != null) furniture.Drawers.Add(drawer);
             });
 
-            Place(wardrobePrefab, Wardrobes, root);
+            Place(wardrobePrefab, Wardrobes, root, webs: 4);
 
             var bedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Bed.prefab");
-            if (bedPrefab != null) Place(bedPrefab, Beds, root);
+            if (bedPrefab != null) Place(bedPrefab, Beds, root, webs: 3);
             else Debug.LogWarning("[House] No Bed prefab — run Granny > Build Content first.");
+
+            var windowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Window.prefab");
+            if (windowPrefab != null) Place(windowPrefab, Windows, root, webs: 2);
+
+            var crowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Crow.prefab");
+            if (crowPrefab != null) Place(crowPrefab, Crows, root);
+
+            // Rugs are laid flat and stay flat. Everything else in the house is
+            // tipped a degree or two out of true to look settled, but a 2.7 m rug
+            // tilted by the same amount has one end three centimetres under the
+            // floorboards and the other three above them.
+            var rugPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Rug.prefab");
+            if (rugPrefab != null) Place(rugPrefab, Rugs, root, weather: false);
 
             // Every opening the walls left gets a door, hung in the opening and
             // turned to match the wall it belongs to.
@@ -537,8 +656,19 @@ namespace Granny.EditorTools
             return furniture;
         }
 
+        /// <summary>
+        /// Stands a piece of furniture at each of its places, and lets each one
+        /// rot on its own.
+        ///
+        /// Ageing used to be done once, on the prefab, which meant twenty-three
+        /// chests of drawers with the same drawer hanging out of them at the same
+        /// angle — a repeated mistake reads as a texture, not as decay. Seeding it
+        /// from where the piece stands gives every room its own damage and still
+        /// gives the same room the same damage every rebuild, which is what makes
+        /// the house learnable.
+        /// </summary>
         static void Place(GameObject prefab, Placement[] placements, Transform parent,
-            System.Action<GameObject> onPlaced = null)
+            int webs = 0, bool weather = true, System.Action<GameObject> onPlaced = null)
         {
             for (var i = 0; i < placements.Length; i++)
             {
@@ -547,8 +677,24 @@ namespace Granny.EditorTools
                 instance.transform.SetPositionAndRotation(
                     placements[i].Position, Quaternion.Euler(0f, placements[i].Yaw, 0f));
 
+                if (weather) DecayBuilder.Weather(instance, SeedFor(placements[i].Position), webs);
+
                 onPlaced?.Invoke(instance);
             }
+        }
+
+        /// <summary>
+        /// A number from a place. Rounded to the centimetre first, because a
+        /// position that came out of a float calculation is not reliably the same
+        /// number twice and the damage has to be.
+        /// </summary>
+        static int SeedFor(Vector3 position)
+        {
+            var x = Mathf.RoundToInt(position.x * 100f);
+            var y = Mathf.RoundToInt(position.y * 100f);
+            var z = Mathf.RoundToInt(position.z * 100f);
+
+            return x * 73856093 ^ y * 19349663 ^ z * 83492791;
         }
 
         // ------------------------------------------------------------------

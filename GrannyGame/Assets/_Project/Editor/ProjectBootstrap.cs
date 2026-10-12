@@ -166,10 +166,11 @@ namespace Granny.EditorTools
 
             pipeline.supportsHDR = true;
             pipeline.msaaSampleCount = 4;
-            pipeline.shadowDistance = 35f;
             pipeline.shadowCascadeCount = 2;
             pipeline.supportsCameraDepthTexture = true;   // required by soft particles / fog effects
             pipeline.supportsCameraOpaqueTexture = false;
+
+            TuneShadows(pipeline);
 
             EditorUtility.SetDirty(pipeline);
 
@@ -184,6 +185,65 @@ namespace Granny.EditorTools
             QualitySettings.SetQualityLevel(current, false);
 
             return pipeline;
+        }
+
+        /// <summary>
+        /// Stops the walls crawling.
+        ///
+        /// Two dozen bulbs all casting real shadows share one shadow map between
+        /// them, and at the default size each one gets a tile too small for the
+        /// room it is lighting. What that looks like is not a soft shadow: it is a
+        /// wall covered in shifting black-and-white speckle, which from across a
+        /// hall reads as filthy wallpaper and survived being looked at three times
+        /// before anyone measured it.
+        ///
+        /// A bigger atlas, a bigger tile each, more bias, and — the part that
+        /// matters most — a shorter shadow distance, so a bulb three rooms away
+        /// stops competing for space in the map with the one overhead.
+        /// </summary>
+        public static void TuneShadows(UniversalRenderPipelineAsset pipeline)
+        {
+            pipeline.shadowDistance = 22f;
+
+            var settings = new SerializedObject(pipeline);
+
+            void Set(string field, float value)
+            {
+                var property = settings.FindProperty(field);
+                if (property == null) return;
+
+                if (property.propertyType == SerializedPropertyType.Float) property.floatValue = value;
+                else property.intValue = (int)value;
+            }
+
+            Set("m_AdditionalLightsShadowmapResolution", 4096);
+            Set("m_AdditionalLightsShadowResolutionTierLow", 512);
+            Set("m_AdditionalLightsShadowResolutionTierMedium", 1024);
+            Set("m_AdditionalLightsShadowResolutionTierHigh", 1024);
+            Set("m_ShadowDepthBias", 1.4f);
+            Set("m_ShadowNormalBias", 2.2f);
+            Set("m_SoftShadowsSupported", 1);
+
+            settings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Applies the rendering settings to the pipeline asset already on disk,
+        /// for the rebuild, which has no reason to redo the rest of bootstrap.
+        /// </summary>
+        public static void TuneShadows()
+        {
+            var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(PipelinePath);
+
+            if (pipeline == null)
+            {
+                Debug.LogWarning($"[Bootstrap] No pipeline asset at {PipelinePath}.");
+                return;
+            }
+
+            TuneShadows(pipeline);
+            EditorUtility.SetDirty(pipeline);
+            AssetDatabase.SaveAssets();
         }
 
         static void ConfigurePlayerSettings()
@@ -349,25 +409,11 @@ namespace Granny.EditorTools
         }
 
         /// <summary>
-        /// Dim, but readable.
-        ///
-        /// The first pass at this was unplayable: ambient light at 0.035 is black,
-        /// the fog was dense enough to swallow anything past about fifteen metres,
-        /// and the house was painted in 0.14-0.28 albedo on top of that. You could
-        /// not see the room you were standing in. Granny's own house is gloomy but
-        /// legible - you can read the layout, and the torch is for corners and
-        /// cupboards. These values aim at that; the old values become the optional
-        /// "darker" mode in a later phase.
+        /// The house's own mood settings, so a scene built here looks like a scene
+        /// built by the house builder. The values live in one place because two
+        /// copies of a number like ambient light drift apart and the second one is
+        /// always the one being looked at.
         /// </summary>
-        static void ApplyHorrorLighting()
-        {
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.16f, 0.155f, 0.17f);
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = new Color(0.05f, 0.048f, 0.055f);
-            RenderSettings.fogDensity = 0.018f;
-            RenderSettings.skybox = null;
-        }
+        static void ApplyHorrorLighting() => BuildKit.Atmosphere();
     }
 }

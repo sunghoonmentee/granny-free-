@@ -108,10 +108,15 @@ namespace Granny.EditorTools
         }
 
         /// <summary>
-        /// Webbing in the corners, strung across the angles rather than laid flat
-        /// on a surface. A web on the front of a wardrobe is dressing; a web
-        /// across the gap between the wardrobe and the wall is a place nobody has
-        /// put a hand for a very long time, which is the thing being said.
+        /// Webbing in the corners, strung across the angle rather than laid flat
+        /// on a face.
+        ///
+        /// Small, and smaller on small furniture. The first version used a fixed
+        /// hand-span, which was right for a wardrobe and covered a third of the
+        /// front of a chest of drawers — at that size it stops reading as a web
+        /// and starts reading as a sticker somebody put there. And faint: a web
+        /// is mostly the air between the threads, so anything solid enough to
+        /// see clearly is already wrong.
         /// </summary>
         static void HangCobwebs(GameObject piece, System.Random random, int count)
         {
@@ -122,6 +127,10 @@ namespace Granny.EditorTools
 
             var material = WebMaterial();
 
+            // A hand's span at most, and a quarter of the piece's narrower way
+            // when the piece is small.
+            var size = Mathf.Clamp(0.3f * Mathf.Min(bounds.size.x, bounds.size.z), 0.09f, 0.22f);
+
             for (var i = 0; i < count; i++)
             {
                 var web = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -130,22 +139,34 @@ namespace Granny.EditorTools
 
                 Object.DestroyImmediate(web.GetComponent<Collider>());
                 web.GetComponent<MeshRenderer>().sharedMaterial = material;
+                web.GetComponent<MeshRenderer>().shadowCastingMode =
+                    UnityEngine.Rendering.ShadowCastingMode.Off;
 
-                // Upper corners first: webs are built where a surface meets a
-                // surface and the air is still.
+                // The top corners: where two surfaces meet, nothing passes, and
+                // the air is still.
                 var x = random.Next(2) == 0 ? bounds.min.x : bounds.max.x;
                 var z = random.Next(2) == 0 ? bounds.min.z : bounds.max.z;
-                var y = Mathf.Lerp(bounds.center.y, bounds.max.y, (float)random.NextDouble() * 0.5f + 0.5f);
+                var y = Mathf.Lerp(bounds.max.y, bounds.center.y, (float)random.NextDouble() * 0.3f);
 
                 var corner = piece.transform.InverseTransformPoint(new Vector3(x, y, z));
-                var inward = (piece.transform.InverseTransformPoint(bounds.center) - corner).normalized;
+                var inward = piece.transform.InverseTransformPoint(bounds.center) - corner;
 
-                // A fixed hand-span, not a fraction of the furniture: webs do
-                // not scale with what they are strung across, and deriving the
-                // size from the bounds grew a web the size of a wardrobe.
-                var size = 0.18f + (float)random.NextDouble() * 0.16f;
+                // Hung vertically, always. Taking the full direction to the
+                // centre let a web on a low, wide piece tilt until it was lying
+                // face up on the floor like a dropped doily. A web is strung
+                // between two walls of a corner, so its sheet stands up.
+                inward.y = 0f;
+                if (inward.sqrMagnitude < 0.0001f)
+                {
+                    Object.DestroyImmediate(web);
+                    continue;
+                }
 
-                web.transform.localPosition = corner + inward * (size * 0.45f);
+                inward = inward.normalized;
+
+                // Half a span in from the corner, so one edge of the web passes
+                // through the corner itself and the rest spans the angle.
+                web.transform.localPosition = corner + inward * (size * 0.5f);
                 web.transform.localRotation = Quaternion.LookRotation(-inward, Vector3.up)
                                               * Quaternion.Euler(0f, 0f, (float)(random.NextDouble() * 360.0));
                 web.transform.localScale = Vector3.one * size;
@@ -154,12 +175,18 @@ namespace Granny.EditorTools
 
         static Bounds Bounds(GameObject piece)
         {
-            var renderers = piece.GetComponentsInChildren<MeshRenderer>();
-            if (renderers.Length == 0) return new Bounds();
+            var bounds = new Bounds();
+            var found = false;
 
-            var bounds = renderers[0].bounds;
-            foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
-            return bounds;
+            foreach (var renderer in piece.GetComponentsInChildren<MeshRenderer>())
+            {
+                if (!renderer.enabled) continue;
+
+                if (!found) { bounds = renderer.bounds; found = true; }
+                else bounds.Encapsulate(renderer.bounds);
+            }
+
+            return found ? bounds : new Bounds();
         }
 
         // ------------------------------------------------------------------
@@ -179,7 +206,10 @@ namespace Granny.EditorTools
             }
 
             material.SetTexture("_BaseMap", WebTexture());
-            material.SetColor("_BaseColor", new Color(0.86f, 0.86f, 0.82f, 0.26f));
+            // Dust grey rather than white, and thin. A web lit by a bulb at
+            // three-quarters white reads as a sheet of paper somebody dropped:
+            // it was the brightest thing in several rooms.
+            material.SetColor("_BaseColor", new Color(0.46f, 0.45f, 0.42f, 0.30f));
 
             // Transparent, unlit-ish and never casting a shadow: a cobweb that
             // throws a hard shadow across a wall looks like a cut-out of a
@@ -206,8 +236,13 @@ namespace Granny.EditorTools
         }
 
         /// <summary>
-        /// Draws a cobweb: radial threads from a corner, with catenary strands
-        /// strung between them.
+        /// Draws a cobweb: radial threads from a corner, with strands sagging
+        /// between them, fading out before it reaches the edge of its own quad.
+        ///
+        /// The fade is the whole trick. Without it the threads run to the border
+        /// and stop dead, and what the player sees is not a web but the square it
+        /// was drawn on — which is exactly what the first one looked like hanging
+        /// on the end of a bed.
         ///
         /// Generated rather than downloaded for the same reason the sounds were:
         /// the project stays buildable from source. It also means the web is
@@ -223,13 +258,11 @@ namespace Granny.EditorTools
             if (existing != null) return existing;
 
             var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            var pixels = new Color32[size * size];
-
-            for (var i = 0; i < pixels.Length; i++) pixels[i] = new Color32(255, 255, 255, 0);
+            var alpha = new float[size * size];
 
             var random = new System.Random(7);
-            var anchor = new Vector2(0.06f, 0.06f) * size;   // the corner it hangs from
-            const int spokes = 11;
+            var anchor = new Vector2(0.04f, 0.04f) * size;   // the corner it hangs from
+            const int spokes = 13;
 
             var ends = new Vector2[spokes];
 
@@ -237,27 +270,47 @@ namespace Granny.EditorTools
             {
                 var t = s / (float)(spokes - 1);
                 var angle = Mathf.Lerp(0f, Mathf.PI * 0.5f, t);
-                var reach = size * (0.78f + (float)random.NextDouble() * 0.2f);
+                var reach = size * (0.72f + (float)random.NextDouble() * 0.26f);
 
                 ends[s] = anchor + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * reach;
-                Thread(pixels, size, anchor, ends[s], 0.55f);
+                Thread(alpha, size, anchor, ends[s], 0.5f);
             }
 
-            // The spiral: each ring sags between neighbouring spokes, which is
-            // what makes it read as thread under its own weight rather than wire.
-            for (var ring = 1; ring <= 7; ring++)
+            // The rings: each one sags between neighbouring spokes, which is what
+            // makes it read as thread under its own weight rather than wire.
+            for (var ring = 1; ring <= 8; ring++)
             {
-                var depth = ring / 8f;
+                var depth = ring / 9f;
 
                 for (var s = 0; s < spokes - 1; s++)
                 {
                     var a = Vector2.Lerp(anchor, ends[s], depth);
                     var b = Vector2.Lerp(anchor, ends[s + 1], depth);
-                    var sag = (a + b) * 0.5f - (a + b - anchor * 2f).normalized * (size * 0.02f);
+                    var sag = (a + b) * 0.5f - (a + b - anchor * 2f).normalized * (size * 0.018f);
 
-                    Thread(pixels, size, a, sag, 0.4f);
-                    Thread(pixels, size, sag, b, 0.4f);
+                    Thread(alpha, size, a, sag, 0.34f);
+                    Thread(alpha, size, sag, b, 0.34f);
                 }
+            }
+
+            // Thin it out towards the far edge, and harder still in the last
+            // tenth, so nothing reaches the border of the quad.
+            var pixels = new Color32[alpha.Length];
+
+            for (var y = 0; y < size; y++)
+            for (var x = 0; x < size; x++)
+            {
+                var index = y * size + x;
+                var reach = (new Vector2(x, y) - anchor).magnitude / size;
+
+                var fade = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.48f, 0.98f, reach));
+                var edge = Mathf.Min(
+                    Mathf.InverseLerp(0f, 0.06f * size, x),
+                    Mathf.InverseLerp(0f, 0.06f * size, size - 1 - x));
+                edge = Mathf.Min(edge, Mathf.InverseLerp(0f, 0.06f * size, size - 1 - y));
+
+                var value = Mathf.Clamp01(alpha[index]) * fade * edge;
+                pixels[index] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(value * 255f));
             }
 
             texture.SetPixels32(pixels);
@@ -279,8 +332,14 @@ namespace Granny.EditorTools
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
-        /// <summary>One strand, drawn by walking the line and dropping alpha.</summary>
-        static void Thread(Color32[] pixels, int size, Vector2 from, Vector2 to, float strength)
+        /// <summary>
+        /// One strand, drawn by walking the line.
+        ///
+        /// Takes the brighter of what is there and what it is laying down rather
+        /// than adding them: threads cross at the hub by the dozen, and adding
+        /// turned every crossing into a white knot.
+        /// </summary>
+        static void Thread(float[] alpha, int size, Vector2 from, Vector2 to, float strength)
         {
             var steps = Mathf.CeilToInt(Vector2.Distance(from, to));
 
@@ -293,8 +352,7 @@ namespace Granny.EditorTools
                 if (x < 0 || y < 0 || x >= size || y >= size) continue;
 
                 var index = y * size + x;
-                var alpha = (byte)Mathf.Clamp(pixels[index].a + strength * 255f, 0f, 255f);
-                pixels[index] = new Color32(255, 255, 255, alpha);
+                alpha[index] = Mathf.Max(alpha[index], strength);
             }
         }
     }

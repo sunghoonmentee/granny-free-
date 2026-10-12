@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Granny.Core;
 using UnityEditor;
@@ -55,6 +56,7 @@ namespace Granny.EditorTools
                 Debug.Log($"[Doctor] {name} ({floor}) {point} -> {to} moved {offset:F2} m : {verdict}");
             }
 
+            ReportOverlaps();
             ReportCoverage(from);
             ReportStairs(from);
             ReportObstructions();
@@ -68,6 +70,63 @@ namespace Granny.EditorTools
         /// where she starts. A floor plan that looks right and bakes wrong shows
         /// up here as a block of dashes.
         /// </summary>
+        /// <summary>
+        /// Finds walls and slabs standing in the same place as each other.
+        ///
+        /// Two surfaces in the same plane do not look like one surface. They
+        /// flicker — each pixel picks whichever won the depth test that frame —
+        /// and the result reads as a filthy, speckled wall rather than as a bug,
+        /// which is how one survived three rebuilds of this house being looked at.
+        ///
+        /// Walls are meant to meet, so a corner or a T-junction is not reported.
+        /// What is reported is an overlap broad in two directions at once, which
+        /// is what a duplicate is and what a junction never is.
+        /// </summary>
+        static void ReportOverlaps()
+        {
+            var boxes = new List<(string name, Bounds bounds)>();
+
+            foreach (var renderer in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            {
+                if (renderer.gameObject.layer != GameLayers.LevelGeometry) continue;
+                boxes.Add((Path(renderer.transform), renderer.bounds));
+            }
+
+            var found = 0;
+
+            for (var i = 0; i < boxes.Count; i++)
+            for (var j = i + 1; j < boxes.Count; j++)
+            {
+                var a = boxes[i].bounds;
+                var b = boxes[j].bounds;
+                if (!a.Intersects(b)) continue;
+
+                var min = Vector3.Max(a.min, b.min);
+                var max = Vector3.Min(a.max, b.max);
+                var overlap = max - min;
+
+                // Two broad directions means face against face. One broad
+                // direction and two thin ones is a wall meeting a wall.
+                var broad = 0;
+                if (overlap.x > 0.5f) broad++;
+                if (overlap.y > 0.5f) broad++;
+                if (overlap.z > 0.5f) broad++;
+
+                if (broad < 2) continue;
+                if (overlap.x * overlap.y * overlap.z < 0.4f) continue;
+
+                found++;
+                if (found <= 20)
+                    Debug.LogWarning(
+                        $"[Doctor] overlap {overlap.x:F2} x {overlap.y:F2} x {overlap.z:F2} m — " +
+                        $"{boxes[i].name}  vs  {boxes[j].name}");
+            }
+
+            Debug.Log(found == 0
+                ? "[Doctor] no two pieces of the house are standing in the same place"
+                : $"[Doctor] {found} overlapping pieces of geometry");
+        }
+
         static void ReportCoverage(Vector3 from)
         {
             var floors = new (string name, float y)[]

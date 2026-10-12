@@ -252,6 +252,12 @@ namespace Granny.Gameplay
             foreach (var bell in FindObjectsByType<Interaction.TripwireBell>(FindObjectsSortMode.None))
                 bell.Rearm();
 
+            // And the birds. Their own cooldown would have run out overnight
+            // anyway, but a day that starts with one still sulking is a day where
+            // the attic is quietly free, and which day that is would be invisible.
+            foreach (var crow in FindObjectsByType<Interaction.Crow>(FindObjectsSortMode.None))
+                crow.Rearm();
+
             var boards = FindObjectsByType<Interaction.CreakyFloor>(FindObjectsSortMode.None)
                 .OrderBy(board => PlacementKey(board.transform.position))
                 .ToList();
