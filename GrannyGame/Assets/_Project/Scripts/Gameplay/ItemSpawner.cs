@@ -71,6 +71,28 @@ namespace Granny.Gameplay
             Distribute(layoutSeeds[Layout]);
         }
 
+        /// <summary>
+        /// The next container that is allowed to hold this item, taking it out of
+        /// the running. Walks forward from the current position and swaps rather
+        /// than reshuffling, so a layout stays the layout it was.
+        /// </summary>
+        static Drawer NextFor(ItemDefinition item, List<Drawer> shuffled, ref int index)
+        {
+            for (var candidate = index; candidate < shuffled.Count; candidate++)
+            {
+                var container = shuffled[candidate];
+                var locked = container.RequiredTag;
+
+                if (!string.IsNullOrEmpty(locked) && item.HasTag(locked)) continue;
+
+                (shuffled[index], shuffled[candidate]) = (shuffled[candidate], shuffled[index]);
+                index++;
+                return container;
+            }
+
+            return null;
+        }
+
         void Distribute(int seed)
         {
             placements.Clear();
@@ -110,7 +132,13 @@ namespace Granny.Gameplay
             {
                 if (item == null) continue;
 
-                var container = shuffled[index++];
+                // Never put the thing that opens a container inside it. One
+                // shuffle in a few dozen would otherwise lock the safe's own code
+                // in the safe, and the run would be unwinnable in a way that looks
+                // exactly like not having searched hard enough.
+                var container = NextFor(item, shuffled, ref index);
+                if (container == null) break;
+
                 container.SetContents(item);
                 placements[item.Id] = container.name;
             }

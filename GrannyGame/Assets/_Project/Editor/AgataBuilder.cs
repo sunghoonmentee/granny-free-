@@ -62,8 +62,18 @@ namespace Granny.EditorTools
             // bulbs that is all the information her silhouette gets to carry:
             // pale hands and face, a mid nightdress, a near-black apron. Painted
             // in one register she was a blur the size of a person.
-            var skin = Material("AgataSkin", new Color(0.82f, 0.77f, 0.70f));
-            var cloth = Material("AgataNightdress", new Color(0.40f, 0.39f, 0.37f));
+            // Cool and slightly green, not warm. At the old values the house's
+            // amber bulbs turned her a healthy tan and she read as carved wood —
+            // a mannequin, which is a thing, and the one thing she must not be.
+            // Pulling the red down and letting green lead by a hair is the whole
+            // difference between skin and timber at this light level.
+            var skin = Material("AgataSkin", new Color(0.70f, 0.72f, 0.66f));
+
+            // The nightdress goes up rather than down. She is read as a shape
+            // first: a pale body with a near-black apron and shawl across it, at
+            // the far end of a corridor, before any of the face resolves. A mid
+            // grey dress under a dark apron gives that shape nothing to work with.
+            var cloth = Material("AgataNightdress", new Color(0.54f, 0.52f, 0.47f));
             var apron = Material("AgataApron", new Color(0.11f, 0.10f, 0.09f));
             var hair = Material("AgataHair", new Color(0.80f, 0.79f, 0.77f));
             var iron = Material("AgataIron", new Color(0.13f, 0.13f, 0.14f));
@@ -87,8 +97,15 @@ namespace Granny.EditorTools
             // The nightdress, to mid-shin. It hangs from the hips, so it stays
             // vertical however far she folds over it — which is what cloth does,
             // and what the first version got wrong by hanging it off the chest.
-            Shape("Skirt", rig.Hips, new Vector3(0f, -0.24f, 0f),
-                new Vector3(0.30f, 0.46f, 0.22f), cloth, layer);
+            // Two lengths rather than one box, the lower one wider: a nightdress
+            // hangs off the hips and falls away from the body, and a column of
+            // uniform width is a dressing gown on a stand. It also puts a visible
+            // horizontal break halfway down her, which is what stops the lower
+            // half reading as legs in a sack.
+            Shape("Skirt", rig.Hips, new Vector3(0f, -0.18f, 0f),
+                new Vector3(0.30f, 0.34f, 0.22f), cloth, layer);
+            Shape("SkirtHem", rig.Hips, new Vector3(0f, -0.44f, 0f),
+                new Vector3(0.37f, 0.20f, 0.27f), cloth, layer);
 
             Shape("Apron", rig.Hips, new Vector3(0f, -0.23f, 0.115f),
                 new Vector3(0.22f, 0.42f, 0.025f), apron, layer);
@@ -254,8 +271,25 @@ namespace Granny.EditorTools
                 new Vector3(0.085f, LowerArm, 0.085f), skin, layer);
 
             var hand = Bone($"Hand{side}", lower, new Vector3(0f, -LowerArm, 0f));
-            Shape($"Hand{side}Flesh", hand, new Vector3(0f, -0.06f, 0f),
-                new Vector3(0.075f, 0.13f, 0.05f), skin, layer);
+            Shape($"Hand{side}Palm", hand, new Vector3(0f, -0.045f, 0f),
+                new Vector3(0.075f, 0.095f, 0.05f), skin, layer);
+
+            // Four fingers and a thumb, curled. Her arms hang past her knees and
+            // the hands are the part of her nearest the player for most of a
+            // chase; a paddle on the end of an arm reads as a tool, and five thin
+            // boxes read as a hand reaching.
+            for (var finger = 0; finger < 4; finger++)
+            {
+                var across = Mathf.Lerp(-0.026f, 0.026f, finger / 3f);
+                var length = finger is 1 or 2 ? 0.062f : 0.05f;
+
+                Shape($"Hand{side}Finger{finger}", hand,
+                    new Vector3(across, -0.095f - length * 0.5f, 0.004f),
+                    new Vector3(0.016f, length, 0.018f), skin, layer);
+            }
+
+            Shape($"Hand{side}Thumb", hand, new Vector3(0.035f * -sign, -0.075f, 0.022f),
+                new Vector3(0.019f, 0.046f, 0.02f), skin, layer);
 
             return (upper, lower, hand);
         }

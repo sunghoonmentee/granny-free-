@@ -173,5 +173,51 @@ namespace Granny.Tests
                     $"Layout {layout} puts two tools in one drawer, so one of them is lost.");
             }
         }
+
+        [UnityTest]
+        public IEnumerator NothingIsEverLockedInsideTheThingItOpens()
+        {
+            // The safe is one of the containers the shuffle draws from, which is
+            // what makes it worth building — and which is also how, once every
+            // few dozen layouts, it would come to hold its own code. That run
+            // looks winnable right up until the last drawer, and then it is not.
+            for (var layout = 0; layout < spawner.LayoutCount; layout++)
+            {
+                spawner.Apply(layout);
+                yield return null;
+
+                foreach (var container in Containers())
+                {
+                    if (!container.IsLocked) continue;
+                    if (container.Contents == null) continue;
+
+                    Assert.IsFalse(container.Contents.HasTag(container.RequiredTag),
+                        $"Layout {layout}: {container.name} holds the very thing that opens it.");
+                }
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TheLockedContainersStillGetUsed()
+        {
+            // The guard above has a lazy way of passing: never put anything in a
+            // locked container at all. Then the safe is furniture, the page is
+            // litter, and the chain the whole thing exists for is gone.
+            var locked = Containers().Where(container => container.IsLocked).ToArray();
+            Assert.IsNotEmpty(locked, "No locked container in the house.");
+
+            var used = 0;
+
+            for (var layout = 0; layout < spawner.LayoutCount; layout++)
+            {
+                spawner.Apply(layout);
+                yield return null;
+
+                if (Containers().Any(container => container.IsLocked && container.Contents != null))
+                    used++;
+            }
+
+            Assert.Greater(used, 0, "Nothing is ever put behind the dial in any layout.");
+        }
     }
 }

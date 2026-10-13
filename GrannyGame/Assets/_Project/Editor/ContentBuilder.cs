@@ -124,6 +124,12 @@ namespace Granny.EditorTools
             ("note", "Torn Note", new[] { "combination" },
                 new Color(0.86f, 0.82f, 0.68f), new Vector3(0.14f, 0.01f, 0.18f), 0.1f, false, null, null),
 
+            // The safe's four digits, written down because she cannot hold them
+            // in her head any more. A number you carry costs a trip across the
+            // house; a number on the screen costs nothing after the first night.
+            ("page", "Torn Page", new[] { "safecode" },
+                new Color(0.80f, 0.76f, 0.63f), new Vector3(0.12f, 0.01f, 0.16f), 0.1f, false, null, null),
+
             ("battery", "Dry Cell", new[] { "battery" },
                 new Color(0.30f, 0.50f, 0.34f), new Vector3(0.07f, 0.14f, 0.07f), 0.5f, false, null, null),
 
@@ -262,6 +268,7 @@ namespace Granny.EditorTools
             public GameObject Window;
             public GameObject Crow;
             public GameObject Rug;
+            public GameObject Safe;
         }
 
         static Furniture BuildFurniture() => new()
@@ -274,6 +281,7 @@ namespace Granny.EditorTools
             Window = BuildWindowPrefab(),
             Crow = BuildCrowPrefab(),
             Rug = BuildRugPrefab(),
+            Safe = BuildSafePrefab(),
         };
 
         /// <summary>
@@ -592,6 +600,82 @@ namespace Granny.EditorTools
         /// looked like from ten metres was a sheet of card dropped on the floor.
         /// A rug is a pattern, and a pattern is a texture.
         /// </summary>
+        /// <summary>
+        /// A safe in the wall.
+        ///
+        /// The design doc has had this on its list since the beginning and it is
+        /// the last of the original's shapes missing from the house: a container
+        /// that wants something other than a free hand. What it adds is a chain —
+        /// find the page, carry it to the safe, carry what is in the safe to the
+        /// door — and a chain is three trips rather than one, which is three
+        /// chances for her to be in the way.
+        ///
+        /// Built on the same component as every chest of drawers, with its lock
+        /// filled in. A safe that is its own kind of object is a safe the spawn
+        /// table does not know about, and a container the spawn table does not
+        /// know about is a container with nothing in it.
+        /// </summary>
+        static GameObject BuildSafePrefab()
+        {
+            var path = $"{PropPrefabDir}/Safe.prefab";
+
+            var iron = EnsureMaterial("PropSafeIron", new Color(0.115f, 0.115f, 0.125f));
+            var brass = EnsureMaterial("PropHandle", new Color(0.62f, 0.58f, 0.46f));
+
+            var root = new GameObject("Safe");
+            root.layer = GameLayers.Interactable;
+
+            // The carcass is the hole in the wall; the door is what swings. Both
+            // on Interactable, so the ray finds the safe from anywhere on it.
+            var body = Box("Body", root.transform, new Vector3(0f, 0.3f, -0.08f),
+                new Vector3(0.62f, 0.6f, 0.44f), iron);
+            body.layer = GameLayers.Interactable;
+
+            // Hung on a pivot at its own left edge, so it turns about the hinge
+            // rather than about its middle — the same arrangement every door in
+            // the house uses, and for the same reason.
+            var hinge = new GameObject("Hinge").transform;
+            hinge.SetParent(root.transform, false);
+            hinge.localPosition = new Vector3(-0.3f, 0.3f, 0.15f);
+
+            var door = Box("Door", hinge, new Vector3(0.3f, 0f, 0f),
+                new Vector3(0.6f, 0.58f, 0.06f), iron);
+            door.layer = GameLayers.Interactable;
+
+            // The dial, and a handle beside it.
+            var dial = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            dial.name = "Dial";
+            dial.transform.SetParent(door.transform, false);
+            dial.transform.localPosition = new Vector3(-0.18f, 0f, 0.6f);
+            dial.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            dial.transform.localScale = new Vector3(0.22f, 0.3f, 0.22f);
+            dial.GetComponent<MeshRenderer>().sharedMaterial = brass;
+            dial.layer = GameLayers.Interactable;
+            Object.DestroyImmediate(dial.GetComponent<Collider>());
+
+            var lever = Box("Lever", door.transform, new Vector3(0.28f, 0f, 0.5f),
+                new Vector3(0.1f, 0.5f, 0.6f), brass);
+            lever.layer = GameLayers.Interactable;
+
+            var anchor = new GameObject("ContentsAnchor").transform;
+            anchor.SetParent(root.transform, false);
+            anchor.localPosition = new Vector3(0f, 0.34f, 0.42f);
+
+            var drawer = root.AddComponent<Drawer>();
+            Wire(drawer, "sliding", hinge);
+            Wire(drawer, "contentsAnchor", anchor);
+
+            var so = new SerializedObject(drawer);
+            so.FindProperty("swingDegrees").floatValue = -104f;
+            so.FindProperty("slideDistance").floatValue = 0f;
+            so.FindProperty("requiredTag").stringValue = "safecode";
+            so.FindProperty("missingHint").stringValue =
+                "A dial, and four digits you do not know.";
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            return SavePrefab(root, path);
+        }
+
         static GameObject BuildRugPrefab()
         {
             var path = $"{PropPrefabDir}/Rug.prefab";

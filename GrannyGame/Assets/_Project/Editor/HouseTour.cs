@@ -53,6 +53,7 @@ namespace Granny.EditorTools
             // rebuilds with two of its doors the wrong colour.
             ("wardrobe-close", new Vector3(4.5f, Attic + Eye, 4.2f), new Vector3(4.5f, Attic + 1.2f, 6.4f)),
             ("rug-close", new Vector3(0f, Ground + Eye, 3.2f), new Vector3(0f, Ground + 0.02f, 5.6f)),
+            ("safe", new Vector3(9.4f, Upper + Eye, 4.4f), new Vector3(11.6f, Upper + 1.4f, 4.4f)),
         };
 
         [MenuItem("Granny/Tour the House", priority = 4)]

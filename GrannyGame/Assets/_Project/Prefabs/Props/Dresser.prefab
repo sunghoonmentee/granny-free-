@@ -82,8 +82,11 @@ MonoBehaviour:
   slideAxis: {x: 0, y: 0, z: 1}
   slideDistance: 0.3
   slideSpeed: 1.4
+  swingDegrees: 0
   contents: {fileID: 0}
   contentsAnchor: {fileID: 1126154835060268457}
+  requiredTag: 
+  missingHint: There is a dial on it, and four digits you do not know.
 --- !u!1 &6968193617830690163
 GameObject:
   m_ObjectHideFlags: 0

@@ -596,6 +596,19 @@ namespace Granny.EditorTools
             new(8.4f, UpperY, 4.4f, 0f),
         };
 
+        /// <summary>
+        /// One safe, in her own room, set into the wall at chest height.
+        ///
+        /// Her room rather than a cupboard somewhere: the one place in the house
+        /// a player has a reason to avoid is where the thing worth having should
+        /// be, and standing at a dial with your back to her door is the most
+        /// expensive thirty seconds the house can sell.
+        /// </summary>
+        static readonly Placement[] Safes =
+        {
+            new(11.6f, UpperY + 1.1f, 4.4f, -90f),
+        };
+
         sealed class Furniture
         {
             public readonly List<Drawer> Drawers = new();
@@ -641,6 +654,18 @@ namespace Granny.EditorTools
             // floorboards and the other three above them.
             var rugPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Rug.prefab");
             if (rugPrefab != null) Place(rugPrefab, Rugs, root, weather: false);
+
+            // Into the same list the chests go into, so the spawn table treats it
+            // as one more place a tool might be — which is the whole point of
+            // building it on the same component.
+            var safePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Safe.prefab");
+
+            if (safePrefab != null)
+                Place(safePrefab, Safes, root, weather: false, onPlaced: instance =>
+                {
+                    var drawer = instance.GetComponent<Drawer>();
+                    if (drawer != null) furniture.Drawers.Add(drawer);
+                });
 
             // Every opening the walls left gets a door, hung in the opening and
             // turned to match the wall it belongs to.
@@ -1087,6 +1112,10 @@ namespace Granny.EditorTools
                 // The locks the harder settings add. Always placed, whatever the
                 // difficulty, so every setting is winnable from the same house.
                 "Item_note", "Item_battery", "Item_fuse",
+                // The safe's page. Required rather than optional: the safe is one
+                // of the containers the run's tools are shared out between, so
+                // whatever ends up behind that dial has to be reachable.
+                "Item_page",
                 // The truck, which is the other way out.
                 "Item_sparkplug", "Item_truckbattery", "Item_fuel", "Item_truckkey",
             };
