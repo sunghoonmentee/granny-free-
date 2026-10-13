@@ -209,7 +209,7 @@ namespace Granny.EditorTools
             // Dust grey rather than white, and thin. A web lit by a bulb at
             // three-quarters white reads as a sheet of paper somebody dropped:
             // it was the brightest thing in several rooms.
-            material.SetColor("_BaseColor", new Color(0.46f, 0.45f, 0.42f, 0.30f));
+            material.SetColor("_BaseColor", new Color(0.58f, 0.57f, 0.53f, 0.85f));
 
             // Transparent, unlit-ish and never casting a shadow: a cobweb that
             // throws a hard shadow across a wall looks like a cut-out of a
@@ -217,8 +217,23 @@ namespace Granny.EditorTools
             material.SetOverrideTag("RenderType", "Transparent");
             material.SetFloat("_Surface", 1f);              // transparent
             material.SetFloat("_Blend", 0f);                // alpha
+
+            // Straight alpha, explicitly, and this is the line that matters.
+            //
+            // URP defaults a transparent Lit material to "preserve specular",
+            // which is premultiplied blending: source factor One, and the shader
+            // is expected to have multiplied its colour by alpha already. The
+            // shader only does that with _ALPHAPREMULTIPLY_ON, which is off here —
+            // so every fully transparent pixel of the web was *adding* its colour
+            // to whatever was behind it. What that looks like is not a web with
+            // gaps in it. It is a sheet of tracing paper, which is exactly what
+            // these have been in every photograph: the texture was right the whole
+            // time and the blend was throwing the gaps away.
+            material.SetFloat("_BlendModePreserveSpecular", 0f);
             material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
             material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            material.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             material.SetFloat("_ZWrite", 0f);
             material.SetFloat("_Cull", 0f);                 // visible from both sides
             material.SetFloat("_Smoothness", 0f);
@@ -326,6 +341,11 @@ namespace Granny.EditorTools
                 importer.textureType = TextureImporterType.Default;
                 importer.alphaIsTransparency = true;
                 importer.wrapMode = TextureWrapMode.Clamp;
+
+                // Same reason the rug and the floors needed it: a web is seen
+                // small and at an angle, which is the case mipmapping handles
+                // worst.
+                importer.anisoLevel = 9;
                 importer.SaveAndReimport();
             }
 
@@ -333,7 +353,14 @@ namespace Granny.EditorTools
         }
 
         /// <summary>
-        /// One strand, drawn by walking the line.
+        /// One strand, drawn by walking the line with a two-pixel brush.
+        ///
+        /// Two pixels rather than one, and that is not a detail. A one-pixel
+        /// thread survives exactly one mip level: by the time a web is a hand's
+        /// span across a room the chain has averaged every thread into the gaps
+        /// between them, and what reaches the screen is a uniform haze — which is
+        /// why these read as scraps of paper stuck to the furniture rather than as
+        /// webs. A thicker strand keeps its shape two levels further down.
         ///
         /// Takes the brighter of what is there and what it is laying down rather
         /// than adding them: threads cross at the hub by the dozen, and adding
@@ -341,18 +368,27 @@ namespace Granny.EditorTools
         /// </summary>
         static void Thread(float[] alpha, int size, Vector2 from, Vector2 to, float strength)
         {
-            var steps = Mathf.CeilToInt(Vector2.Distance(from, to));
+            var steps = Mathf.CeilToInt(Vector2.Distance(from, to)) * 2;
 
             for (var i = 0; i <= steps; i++)
             {
                 var point = Vector2.Lerp(from, to, i / (float)Mathf.Max(1, steps));
-                var x = Mathf.RoundToInt(point.x);
-                var y = Mathf.RoundToInt(point.y);
 
-                if (x < 0 || y < 0 || x >= size || y >= size) continue;
+                for (var dx = 0; dx <= 1; dx++)
+                for (var dy = 0; dy <= 1; dy++)
+                {
+                    var x = Mathf.RoundToInt(point.x) + dx;
+                    var y = Mathf.RoundToInt(point.y) + dy;
 
-                var index = y * size + x;
-                alpha[index] = Mathf.Max(alpha[index], strength);
+                    if (x < 0 || y < 0 || x >= size || y >= size) continue;
+
+                    // The second pixel of the pair is thinner, so a strand has an
+                    // edge rather than being a two-pixel bar.
+                    var weight = dx + dy == 0 ? strength : strength * 0.6f;
+
+                    var index = y * size + x;
+                    alpha[index] = Mathf.Max(alpha[index], weight);
+                }
             }
         }
     }

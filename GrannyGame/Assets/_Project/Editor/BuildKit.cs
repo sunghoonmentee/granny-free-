@@ -34,7 +34,8 @@ namespace Granny.EditorTools
         // Materials
         // ------------------------------------------------------------------
 
-        public static Material Material(string name, Color colour, float smoothness = 0.08f)
+        public static Material Material(string name, Color colour, float smoothness = 0.08f,
+            float emissive = 0f)
         {
             var path = $"{MaterialDir}/{name}.mat";
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -49,6 +50,19 @@ namespace Granny.EditorTools
             mat.SetColor("_BaseColor", colour);
             mat.SetFloat("_Smoothness", smoothness);
             mat.SetFloat("_Metallic", 0f);
+
+            if (emissive > 0f)
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", colour * emissive);
+
+                // Without this the emission is set and never shows: a material
+                // made in code carries the "emissive is black" lightmap flag and
+                // Unity honours it over the colour. Agata's eyes were two dull
+                // beads for weeks because of it.
+                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            }
+
             EditorUtility.SetDirty(mat);
             return mat;
         }
@@ -434,7 +448,61 @@ namespace Granny.EditorTools
             light.shadows = LightShadows.Soft;
             light.shadowStrength = 0.85f;
 
+            Fitting(go.transform, colour);
             return light;
+        }
+
+        /// <summary>
+        /// The bulb itself, hanging on a flex under a tin shade.
+        ///
+        /// There was no geometry here at all — a light is an invisible point, so
+        /// what every photograph of this house showed on the ceiling was a patch
+        /// of glow with nothing making it. Two dozen of those read as a house with
+        /// luminous damp rather than a house with lamps in it.
+        ///
+        /// Everything hangs *below* the light rather than around it. The first
+        /// attempt put the shade and the flex above, where the ceiling slab is,
+        /// and both were swallowed by it — what came out was a bare bulb stuck to
+        /// the plaster. Nothing in the fitting casts a shadow, so hanging a shade
+        /// under the lamp does not put the room it lights into the dark.
+        /// </summary>
+        static void Fitting(Transform at, Color colour)
+        {
+            var glass = Material("BulbGlass", new Color(1f, 0.93f, 0.78f), 0.5f, emissive: 2.4f);
+            var tin = Material("BulbShade", new Color(0.17f, 0.16f, 0.15f));
+            var flex = Material("BulbFlex", new Color(0.09f, 0.085f, 0.08f));
+
+            GameObject Part(string name, PrimitiveType shape, Vector3 position,
+                Vector3 scale, UnityEngine.Material material)
+            {
+                var go = GameObject.CreatePrimitive(shape);
+                go.name = name;
+                go.transform.SetParent(at, false);
+                go.transform.localPosition = position;
+                go.transform.localScale = scale;
+                go.GetComponent<MeshRenderer>().sharedMaterial = material;
+                go.GetComponent<MeshRenderer>().shadowCastingMode =
+                    UnityEngine.Rendering.ShadowCastingMode.Off;
+                go.isStatic = true;
+
+                Object.DestroyImmediate(go.GetComponent<Collider>());
+                return go;
+            }
+
+            // Up into the ceiling, down to the shade.
+            Part("Flex", PrimitiveType.Cube, new Vector3(0f, 0.06f, 0f),
+                new Vector3(0.016f, 0.2f, 0.016f), flex);
+
+            // A cylinder squashed flat reads as a tin shade at the distance these
+            // are ever seen from, and costs a quarter of what a cone would.
+            Part("Shade", PrimitiveType.Cylinder, new Vector3(0f, -0.055f, 0f),
+                new Vector3(0.3f, 0.035f, 0.3f), tin);
+
+            Part("Holder", PrimitiveType.Cylinder, new Vector3(0f, -0.115f, 0f),
+                new Vector3(0.05f, 0.035f, 0.05f), tin);
+
+            Part("Glass", PrimitiveType.Sphere, new Vector3(0f, -0.185f, 0f),
+                new Vector3(0.085f, 0.11f, 0.085f), glass);
         }
 
         public static Transform Marker(Transform parent, string name, Vector3 position,

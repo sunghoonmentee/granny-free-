@@ -41,7 +41,10 @@ namespace Granny.EditorTools
             ("hall-to-door", new Vector3(0f, Ground + Eye, 0.5f), new Vector3(0f, Ground + 1.5f, 9.4f)),
             ("hall-inward", new Vector3(0f, Ground + Eye, 8f), new Vector3(0f, Ground + 1.1f, -6f)),
             ("landing", new Vector3(0f, Upper + Eye, 1.8f), new Vector3(0f, Ground + 0.9f, 7f)),
-            ("bedroom", new Vector3(9.5f, Upper + Eye, -1.6f), new Vector3(8f, Upper + 0.5f, -6f)),
+            // Backed into the corner: the first spot stood inside the tall chair
+            // by the door, and a photograph of the back of a chair is a
+            // photograph of nothing.
+            ("bedroom", new Vector3(10.8f, Upper + Eye, -0.9f), new Vector3(8f, Upper + 0.55f, -6f)),
             ("kitchen", new Vector3(-6f, Ground + Eye, 2f), new Vector3(-11f, Ground + 0.9f, 6f)),
             ("parlour", new Vector3(-6f, Ground + Eye, -2f), new Vector3(-11f, Ground + 1.1f, -5f)),
             ("cellar", new Vector3(-7f, Basement + Eye, 2f), new Vector3(-11.4f, Basement + 0.8f, 5.5f)),

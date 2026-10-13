@@ -91,7 +91,7 @@ Material:
     - _AlphaClip: 0
     - _AlphaToMask: 0
     - _Blend: 0
-    - _BlendModePreserveSpecular: 1
+    - _BlendModePreserveSpecular: 0
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
@@ -120,13 +120,13 @@ Material:
     - _XRMotionVectorsPass: 1
     - _ZWrite: 0
     m_Colors:
-    - _BaseColor: {r: 0.46, g: 0.45, b: 0.42, a: 0.3}
-    - _Color: {r: 0.45999992, g: 0.45, b: 0.41999996, a: 0.3}
+    - _BaseColor: {r: 0.58, g: 0.57, b: 0.53, a: 0.85}
+    - _Color: {r: 0.58, g: 0.56999993, b: 0.53, a: 0.85}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &4793342585786261903
+--- !u!114 &6331456911741759603
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}

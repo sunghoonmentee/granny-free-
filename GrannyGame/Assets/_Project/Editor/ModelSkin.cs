@@ -46,7 +46,7 @@ namespace Granny.EditorTools
             ("vintage_grandfather_clock_01", new Color(0.25f, 0.21f, 0.18f), 0.2f),
             ("WoodenChair_01", new Color(0.27f, 0.23f, 0.20f), 0.18f),
             ("Rockingchair_01", new Color(0.30f, 0.26f, 0.22f), 0.18f),
-            ("dining_table", new Color(0.33f, 0.28f, 0.23f), 0.16f),
+            ("dining_table", new Color(0.24f, 0.21f, 0.17f), 0.14f),
             ("Shelf_01", new Color(0.31f, 0.27f, 0.22f), 0.16f),
         };
 
