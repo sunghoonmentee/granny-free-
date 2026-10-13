@@ -210,8 +210,10 @@ namespace Granny.EditorTools
             ("Battery", "truckbattery", "Drop in the battery", "No battery under the bonnet.",
                 new Color(0.22f, 0.42f, 0.28f), new Vector3(-0.6f, 1.2f, 1.5f), new Vector3(0.4f, 0.3f, 0.3f)),
 
+            // Tucked against the chassis under the flatbed rather than hanging
+            // off the side of it, where it read as a crate floating in mid-air.
             ("Fuel", "fuel", "Fill the tank", "The gauge is on empty.",
-                new Color(0.70f, 0.45f, 0.15f), new Vector3(1.1f, 0.9f, -0.6f), new Vector3(0.22f, 0.3f, 0.22f)),
+                new Color(0.70f, 0.45f, 0.15f), new Vector3(0.98f, 0.72f, -0.6f), new Vector3(0.2f, 0.28f, 0.5f)),
 
             ("Ignition", "truckkey", "Start the engine", "No key in it.",
                 new Color(0.85f, 0.75f, 0.35f), new Vector3(-0.5f, 1.3f, -0.4f), new Vector3(0.1f, 0.12f, 0.1f)),
@@ -306,6 +308,65 @@ namespace Granny.EditorTools
 
                 Object.DestroyImmediate(light.GetComponent<Collider>());
             }
+
+            // Arches over the wheels, and a board to stand on between them.
+            //
+            // Without them the wheels read as four discs leaning against a crate:
+            // a wheel only becomes part of a vehicle when something covers the top
+            // of it. The running board does the same job along the side, which is
+            // otherwise two and a half metres of flat panel.
+            foreach (var at in new[]
+                     {
+                         new Vector3(-1.02f, 0.92f, 1.45f), new Vector3(1.02f, 0.92f, 1.45f),
+                         new Vector3(-1.02f, 0.92f, -1.55f), new Vector3(1.02f, 0.92f, -1.55f),
+                     })
+                Box($"Arch_{at.x:F1}_{at.z:F1}", root.transform, at,
+                    new Vector3(0.34f, 0.12f, 1.06f), paint).layer = GameLayers.Prop;
+
+            foreach (var side in new[] { -1.06f, 1.06f })
+                Box($"Step_{side:F1}", root.transform, new Vector3(side, 0.62f, 0f),
+                    new Vector3(0.3f, 0.07f, 1.9f), iron).layer = GameLayers.Prop;
+
+            // A radiator, because the front of the truck is the face of it and it
+            // was a blank panel with two lamps either side.
+            Box("Radiator", root.transform, new Vector3(0f, 1.18f, 2.52f),
+                new Vector3(1.1f, 0.74f, 0.1f), iron).layer = GameLayers.Prop;
+
+            for (var slat = 0; slat < 7; slat++)
+                Box($"Slat_{slat}", root.transform,
+                    new Vector3(-0.42f + slat * 0.14f, 1.18f, 2.58f),
+                    new Vector3(0.05f, 0.62f, 0.04f), lamp).layer = GameLayers.Prop;
+
+            // A hub on each wheel, so a wheel is a wheel rather than a hole in the
+            // picture. Pale on near-black is the only thing that reads at the light
+            // level of that garage.
+            foreach (var at in new[]
+                     {
+                         new Vector3(-1.17f, 0.44f, 1.45f), new Vector3(1.17f, 0.44f, 1.45f),
+                         new Vector3(-1.17f, 0.44f, -1.55f), new Vector3(1.17f, 0.44f, -1.55f),
+                     })
+            {
+                var hub = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                hub.name = $"Hub_{at.x:F1}_{at.z:F1}";
+                hub.transform.SetParent(root.transform, false);
+                hub.transform.localPosition = at;
+                hub.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                hub.transform.localScale = new Vector3(0.36f, 0.02f, 0.36f);
+                hub.GetComponent<MeshRenderer>().sharedMaterial = iron;
+                hub.layer = GameLayers.Prop;
+
+                Object.DestroyImmediate(hub.GetComponent<Collider>());
+            }
+
+            // An exhaust up the back of the cab, the way a working lorry has one.
+            var pipe = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pipe.name = "Exhaust";
+            pipe.transform.SetParent(root.transform, false);
+            pipe.transform.localPosition = new Vector3(1.0f, 1.9f, -1.28f);
+            pipe.transform.localScale = new Vector3(0.11f, 0.78f, 0.11f);
+            pipe.GetComponent<MeshRenderer>().sharedMaterial = iron;
+            pipe.layer = GameLayers.Prop;
+            Object.DestroyImmediate(pipe.GetComponent<Collider>());
 
             // The shutter the truck has to go out through. It stays shut; cutting
             // the chain is what the player does about it.

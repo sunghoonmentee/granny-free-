@@ -269,6 +269,7 @@ namespace Granny.EditorTools
             public GameObject Crow;
             public GameObject Rug;
             public GameObject Safe;
+            public GameObject Locker;
         }
 
         static Furniture BuildFurniture() => new()
@@ -282,6 +283,7 @@ namespace Granny.EditorTools
             Crow = BuildCrowPrefab(),
             Rug = BuildRugPrefab(),
             Safe = BuildSafePrefab(),
+            Locker = BuildLockerPrefab(),
         };
 
         /// <summary>
@@ -671,6 +673,80 @@ namespace Granny.EditorTools
             so.FindProperty("requiredTag").stringValue = "safecode";
             so.FindProperty("missingHint").stringValue =
                 "A dial, and four digits you do not know.";
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            return SavePrefab(root, path);
+        }
+
+        /// <summary>
+        /// A gun cabinet, nailed shut.
+        ///
+        /// The other thing the design document has been asking for, and the one
+        /// that needed no new machinery at all now that a container can want
+        /// something: it is a chest of drawers with its lock set to the tag the
+        /// hammer already carries.
+        ///
+        /// That is the whole design. No second note, no second key — the tool
+        /// that takes the plank off the front door is the tool that opens this,
+        /// so the hammer is wanted in two places at once and carrying it to one
+        /// is a decision about the other. One hand is what makes that cost
+        /// anything, and it is the rule the whole game is built on.
+        /// </summary>
+        static GameObject BuildLockerPrefab()
+        {
+            var path = $"{PropPrefabDir}/Locker.prefab";
+
+            var wood = EnsureMaterial("PropLocker", new Color(0.22f, 0.16f, 0.12f));
+            var iron = EnsureMaterial("PropLockerIron", new Color(0.14f, 0.135f, 0.14f));
+            var glass = EnsureMaterial("PropLockerGlass", new Color(0.09f, 0.11f, 0.12f), smoothness: 0.42f);
+
+            var root = new GameObject("Locker");
+            root.layer = GameLayers.Interactable;
+
+            // The carcass is a Prop rather than an Interactable, which is what
+            // makes it solid: the interaction mask contains both, so the ray still
+            // finds the cabinet, but only Prop is in the mask the player and she
+            // collide with. A cupboard you can walk through is furniture that is
+            // not in the room.
+            var body = Box("Body", root.transform, new Vector3(0f, 0.9f, -0.1f),
+                new Vector3(0.78f, 1.8f, 0.42f), wood);
+            body.layer = GameLayers.Prop;
+
+            // The glass is the point of a gun cabinet: you can see what is in it
+            // from across the room and still have to go and get the hammer.
+            Box("Pane", root.transform, new Vector3(0f, 1.15f, 0.1f),
+                new Vector3(0.52f, 1.0f, 0.03f), glass).layer = GameLayers.Prop;
+
+            var hinge = new GameObject("Hinge").transform;
+            hinge.SetParent(root.transform, false);
+            hinge.localPosition = new Vector3(-0.37f, 0.9f, 0.1f);
+
+            var door = Box("Door", hinge, new Vector3(0.37f, 0f, 0f),
+                new Vector3(0.74f, 1.76f, 0.05f), wood);
+            door.layer = GameLayers.Interactable;
+
+            // The boards across it, which is what the hammer comes off.
+            foreach (var y in new[] { -0.42f, 0.1f, 0.58f })
+                Box($"Plank_{y:F2}", hinge, new Vector3(0.37f, y, 0.045f),
+                    new Vector3(0.86f, 0.16f, 0.03f), wood).layer = GameLayers.Interactable;
+
+            Box("Hasp", hinge, new Vector3(0.68f, 0.3f, 0.05f),
+                new Vector3(0.1f, 0.22f, 0.04f), iron).layer = GameLayers.Interactable;
+
+            var anchor = new GameObject("ContentsAnchor").transform;
+            anchor.SetParent(root.transform, false);
+            anchor.localPosition = new Vector3(0f, 1f, 0.5f);
+
+            var drawer = root.AddComponent<Drawer>();
+            Wire(drawer, "sliding", hinge);
+            Wire(drawer, "contentsAnchor", anchor);
+
+            var so = new SerializedObject(drawer);
+            so.FindProperty("swingDegrees").floatValue = -98f;
+            so.FindProperty("slideDistance").floatValue = 0f;
+            so.FindProperty("requiredTag").stringValue = "pry";
+            so.FindProperty("missingHint").stringValue =
+                "Boards across the glass, and nothing to lever them with.";
             so.ApplyModifiedPropertiesWithoutUndo();
 
             return SavePrefab(root, path);

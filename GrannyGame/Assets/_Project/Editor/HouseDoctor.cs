@@ -84,12 +84,53 @@ namespace Granny.EditorTools
         /// </summary>
         static void ReportOverlaps()
         {
-            var boxes = new List<(string name, Bounds bounds)>();
+            var boxes = new List<(string name, Bounds bounds, bool prop)>();
+            var seen = new HashSet<string>();
 
+            // Props as well as the house itself, and for a reason that cost an
+            // afternoon: a gun cabinet was placed flat against a boarded window,
+            // and since both are furniture rather than walls, nothing noticed. A
+            // thing standing inside another thing is the same mistake whichever
+            // builder put it there.
+            //
+            // The house is compared piece by piece; a prop is compared as a whole.
+            // Taking the whole of a prop is what stops every drawer being reported
+            // as standing inside its own chest — and taking only a piece of the
+            // house is what stops a whole storey being reported as containing
+            // everything in it, which is what the first attempt did.
             foreach (var renderer in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
             {
-                if (renderer.gameObject.layer != GameLayers.LevelGeometry) continue;
-                boxes.Add((Path(renderer.transform), renderer.bounds));
+                if (!renderer.enabled) continue;
+
+                var layer = renderer.gameObject.layer;
+
+                // Only boxes that are square to the world. A stair ramp is a
+                // slab tipped on its side, and the axis-aligned box around it
+                // covers the whole flight — so every ramp "overlaps" the floor it
+                // rises from, every time, and four such lines at the top of the
+                // report are four lines nobody reads past.
+                if (!IsSquare(renderer.transform)) continue;
+
+                if (layer == GameLayers.LevelGeometry)
+                {
+                    boxes.Add((Path(renderer.transform), renderer.bounds, false));
+                    continue;
+                }
+
+                if (layer != GameLayers.Prop) continue;
+
+                var top = Furnishing(renderer.transform);
+                if (top == null) continue;
+
+                var name = Path(top);
+                if (!seen.Add(name)) continue;
+
+                var bounds = renderer.bounds;
+                foreach (var child in top.GetComponentsInChildren<MeshRenderer>())
+                    if (child.enabled)
+                        bounds.Encapsulate(child.bounds);
+
+                boxes.Add((name, bounds, true));
             }
 
             var found = 0;
@@ -97,6 +138,12 @@ namespace Granny.EditorTools
             for (var i = 0; i < boxes.Count; i++)
             for (var j = i + 1; j < boxes.Count; j++)
             {
+                // Like with like. A window is meant to sit inside a wall, and a
+                // check that says so sixteen times is a check that gets turned
+                // off; what is worth hearing about is two walls in one place, or
+                // two pieces of furniture in one place.
+                if (boxes[i].prop != boxes[j].prop) continue;
+
                 var a = boxes[i].bounds;
                 var b = boxes[j].bounds;
                 if (!a.Intersects(b)) continue;
@@ -216,6 +263,37 @@ namespace Granny.EditorTools
                                   $"{Path(hit.transform)} is in the way");
                 }
             }
+        }
+
+        /// <summary>
+        /// The piece of furniture a renderer belongs to: the highest ancestor
+        /// still under Furnishings or Clutter. Null for anything standing outside
+        /// both, which is not a prop this check has an opinion about.
+        /// </summary>
+        /// <summary>
+        /// True when the object is turned a whole number of right angles, so the
+        /// box around it is the shape of it.
+        /// </summary>
+        static bool IsSquare(Transform transform)
+        {
+            var angles = transform.rotation.eulerAngles;
+
+            foreach (var angle in new[] { angles.x, angles.y, angles.z })
+            {
+                var off = Mathf.Abs(Mathf.DeltaAngle(angle, Mathf.Round(angle / 90f) * 90f));
+                if (off > 1.5f) return false;
+            }
+
+            return true;
+        }
+
+        static Transform Furnishing(Transform transform)
+        {
+            for (var t = transform; t != null; t = t.parent)
+                if (t.parent != null && t.parent.name is "Furnishings" or "Clutter")
+                    return t;
+
+            return null;
         }
 
         static string Path(Transform t) =>

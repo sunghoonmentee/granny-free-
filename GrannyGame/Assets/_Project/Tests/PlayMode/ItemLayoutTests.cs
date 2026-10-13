@@ -219,5 +219,38 @@ namespace Granny.Tests
 
             Assert.Greater(used, 0, "Nothing is ever put behind the dial in any layout.");
         }
+
+        [UnityTest]
+        public IEnumerator TwoLockedContainersCannotHoldEachOthersKeys()
+        {
+            // The standoff: the hammer behind the dial, and the safe's page behind
+            // the boards that only the hammer takes off. Neither container holds
+            // the thing that opens *it*, so the narrower check passes and the run
+            // is still impossible. Nothing that opens anything goes behind
+            // anything.
+            var keyTags = Containers()
+                .Where(container => !string.IsNullOrEmpty(container.RequiredTag))
+                .Select(container => container.RequiredTag)
+                .Distinct()
+                .ToArray();
+
+            Assert.IsNotEmpty(keyTags, "Nothing in the house is locked.");
+
+            for (var layout = 0; layout < spawner.LayoutCount; layout++)
+            {
+                spawner.Apply(layout);
+                yield return null;
+
+                foreach (var container in Containers())
+                {
+                    if (!container.IsLocked || container.Contents == null) continue;
+
+                    foreach (var tag in keyTags)
+                        Assert.IsFalse(container.Contents.HasTag(tag),
+                            $"Layout {layout}: {container.name} is locked and holds " +
+                            $"'{container.Contents.DisplayName}', which opens a locked container.");
+                }
+            }
+        }
     }
 }

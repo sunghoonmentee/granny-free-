@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Granny.Core;
 using Granny.Gameplay.Interaction;
 using UnityEngine;
@@ -75,15 +76,25 @@ namespace Granny.Gameplay
         /// The next container that is allowed to hold this item, taking it out of
         /// the running. Walks forward from the current position and swaps rather
         /// than reshuffling, so a layout stays the layout it was.
+        ///
+        /// Anything that opens *any* locked container is kept out of *every*
+        /// locked container, not merely out of its own. Keeping it out of its own
+        /// is not enough once there are two: the hammer behind the dial and the
+        /// safe's page behind the boards the hammer takes off is a standoff, and
+        /// each half of it passes a check that only ever looks at one container
+        /// at a time. The house has two locked containers today and the rule
+        /// costs nothing, which is the right moment to write it down.
         /// </summary>
-        static Drawer NextFor(ItemDefinition item, List<Drawer> shuffled, ref int index)
+        static Drawer NextFor(ItemDefinition item, List<Drawer> shuffled,
+            HashSet<string> keyTags, ref int index)
         {
+            var isKey = keyTags.Any(item.HasTag);
+
             for (var candidate = index; candidate < shuffled.Count; candidate++)
             {
                 var container = shuffled[candidate];
-                var locked = container.RequiredTag;
 
-                if (!string.IsNullOrEmpty(locked) && item.HasTag(locked)) continue;
+                if (isKey && !string.IsNullOrEmpty(container.RequiredTag)) continue;
 
                 (shuffled[index], shuffled[candidate]) = (shuffled[candidate], shuffled[index]);
                 index++;
@@ -126,6 +137,14 @@ namespace Granny.Gameplay
                 (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
             }
 
+            // Every tag that opens something, asked of the containers rather than
+            // listed here: a lock added to a new cupboard is automatically a tag
+            // the shuffle has to keep out of the locked ones.
+            var keyTags = new HashSet<string>(
+                containers
+                    .Where(container => container != null && !string.IsNullOrEmpty(container.RequiredTag))
+                    .Select(container => container.RequiredTag));
+
             var index = 0;
 
             foreach (var item in requiredItems)
@@ -136,7 +155,7 @@ namespace Granny.Gameplay
                 // shuffle in a few dozen would otherwise lock the safe's own code
                 // in the safe, and the run would be unwinnable in a way that looks
                 // exactly like not having searched hard enough.
-                var container = NextFor(item, shuffled, ref index);
+                var container = NextFor(item, shuffled, keyTags, ref index);
                 if (container == null) break;
 
                 container.SetContents(item);

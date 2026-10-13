@@ -609,6 +609,20 @@ namespace Granny.EditorTools
             new(11.6f, UpperY + 1.1f, 4.4f, -90f),
         };
 
+        /// <summary>
+        /// The gun cabinet, in the living room on the ground floor — the room
+        /// the player crosses most and the one furthest from the hammer's usual
+        /// hiding places. Clear of the chest at (6, -9.55) and the bookshelf at
+        /// (9.6, -9.3).
+        /// </summary>
+        static readonly Placement[] Lockers =
+        {
+            // South-east corner of the living room. The first spot put it flat
+            // against a boarded window — the cabinet is 1.8 m tall and the window
+            // sill is at 1.15 m, so the planks came out through the glass front.
+            new(11.5f, GroundY, -8.5f, -90f),
+        };
+
         sealed class Furniture
         {
             public readonly List<Drawer> Drawers = new();
@@ -662,6 +676,15 @@ namespace Granny.EditorTools
 
             if (safePrefab != null)
                 Place(safePrefab, Safes, root, weather: false, onPlaced: instance =>
+                {
+                    var drawer = instance.GetComponent<Drawer>();
+                    if (drawer != null) furniture.Drawers.Add(drawer);
+                });
+
+            var lockerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PropPrefabDir}/Locker.prefab");
+
+            if (lockerPrefab != null)
+                Place(lockerPrefab, Lockers, root, webs: 2, onPlaced: instance =>
                 {
                     var drawer = instance.GetComponent<Drawer>();
                     if (drawer != null) furniture.Drawers.Add(drawer);

@@ -62,7 +62,7 @@ namespace Granny.EditorTools
             ("EscapePlanking", "Planks037A", 0.3f, new Color(0.25f, 0.18f, 0.12f)),
             ("EscapeFrame", "Planks037A", 0.5f, new Color(0.19f, 0.14f, 0.10f)),
             ("EscapePlank", "Planks037A", 0.4f, new Color(0.38f, 0.28f, 0.17f)),
-            ("TruckPaint", "Concrete034", 1.2f, new Color(0.30f, 0.26f, 0.23f)),
+            ("TruckPaint", "Concrete034", 1.2f, new Color(0.46f, 0.40f, 0.34f)),
             ("PropWindowFrame", "Planks037A", 0.35f, new Color(0.34f, 0.28f, 0.21f)),
             ("PropWindowBoard", "Planks037A", 0.3f, new Color(0.52f, 0.43f, 0.31f)),
             // No cloth scan. The one that was downloaded has a strong blue cast
