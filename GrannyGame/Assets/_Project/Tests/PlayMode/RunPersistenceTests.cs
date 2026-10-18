@@ -54,6 +54,16 @@ namespace Granny.Tests
 #endif
         }
 
+        /// <summary>The same, for the fields that hold text rather than a reference.</summary>
+        static void Wire(Object target, string field, string value)
+        {
+#if UNITY_EDITOR
+            var so = new UnityEditor.SerializedObject(target);
+            so.FindProperty(field).stringValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+#endif
+        }
+
         static void SetString(Object target, string field, string value)
         {
 #if UNITY_EDITOR
@@ -207,6 +217,34 @@ namespace Granny.Tests
             Assert.IsTrue(drawer.HasBeenSearched);
             Assert.IsNull(drawer.Contents, "Finding the same hammer twice would break the run.");
             CollectionAssert.Contains(director.Snapshot().searchedContainerIds, "Dresser_0");
+        }
+
+        [UnityTest]
+        public IEnumerator ACrackedSafeIsStillOpenInTheMorning()
+        {
+            // Restoring a run used to empty every searched container and relock
+            // the ones that had locks, so the safe wanted its code a second time
+            // for a second helping of nothing.
+            var go = new GameObject("Safe_0");
+            go.transform.SetParent(sceneRoot.transform);
+            go.SetActive(false);
+
+            var sliding = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
+            sliding.SetParent(go.transform, false);
+
+            var drawer = go.AddComponent<Drawer>();
+            Wire(drawer, "sliding", sliding);
+            Wire(drawer, "requiredTag", "safecode");
+            go.SetActive(true);
+            yield return null;
+
+            Assert.IsTrue(drawer.IsLocked, "A safe with a code on it starts locked.");
+
+            drawer.ForceUnlock();
+            drawer.MarkSearched();
+
+            Assert.IsFalse(drawer.IsLocked, "Having been opened once, it stays open.");
+            Assert.IsNull(drawer.Contents);
         }
 
         [UnityTest]

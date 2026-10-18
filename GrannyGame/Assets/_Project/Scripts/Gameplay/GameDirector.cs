@@ -123,9 +123,22 @@ namespace Granny.Gameplay
                     stage.ForceClear();
 
             var searched = new HashSet<string>(save.searchedContainerIds);
+
             foreach (var container in FindObjectsByType<Interaction.Drawer>(FindObjectsSortMode.None))
-                if (searched.Contains(container.name))
-                    container.MarkSearched();
+            {
+                if (!searched.Contains(container.name)) continue;
+
+                // Unlocked as well as emptied. A container that was searched was
+                // necessarily opened, and anything that was opened was necessarily
+                // unlocked — but the restore only ever emptied them, so a safe the
+                // player had already cracked was waiting for its code again the
+                // next morning. The page is still lying wherever it was dropped,
+                // so the run stays winnable; what it costs is a walk across the
+                // house to open something that is already empty, which is the
+                // worst kind of wasted trip because it looks like progress.
+                container.ForceUnlock();
+                container.MarkSearched();
+            }
 
             Debug.Log($"[GameDirector] resumed on day {save.day}");
         }

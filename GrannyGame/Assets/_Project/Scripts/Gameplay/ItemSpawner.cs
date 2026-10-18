@@ -156,7 +156,20 @@ namespace Granny.Gameplay
                 // in the safe, and the run would be unwinnable in a way that looks
                 // exactly like not having searched hard enough.
                 var container = NextFor(item, shuffled, keyTags, ref index);
-                if (container == null) break;
+
+                if (container == null)
+                {
+                    // Silently stopping here leaves the rest of the run's tools
+                    // unplaced, and an unwinnable house looks exactly like one
+                    // that has not been searched hard enough. It cannot happen
+                    // with two locked containers out of two dozen, which is
+                    // precisely why it would go unnoticed if it ever did.
+                    Debug.LogError(
+                        $"[{nameof(ItemSpawner)}] Nowhere left to hide '{item.DisplayName}' " +
+                        $"— every remaining container is locked by something it carries. " +
+                        $"The run would be unwinnable.", this);
+                    break;
+                }
 
                 container.SetContents(item);
                 placements[item.Id] = container.name;
