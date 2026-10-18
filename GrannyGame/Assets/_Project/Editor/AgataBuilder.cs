@@ -129,12 +129,13 @@ namespace Granny.EditorTools
                 new Vector3(0.285f, ChestLength, 0.185f), cloth, layer);
 
             // The hump. It is the one piece of her that is not a simplification
-            // of a person: a mass on the upper back, behind and above the chest,
-            // so that the stoop reads as something she is carrying rather than as
-            // a figure leaning forward. From behind it is the first thing you see
-            // of her, and from the side it is the whole shape.
-            Shape("Hunch", rig.Chest, new Vector3(0f, ChestLength * 0.74f, -0.1f),
-                new Vector3(0.30f, 0.235f, 0.165f), cloth, layer);
+            // of a person: a mass on the upper back, so the stoop reads as
+            // something she is carrying rather than as a figure leaning forward.
+            // From behind it is the first thing you see of her, and from the side
+            // it is the whole shape — which is why it is round. Square, it was a
+            // black crate strapped between her shoulder blades.
+            Blob("Hunch", rig.Chest, new Vector3(0f, ChestLength * 0.68f, -0.09f),
+                new Vector3(0.28f, 0.26f, 0.25f), cloth, layer);
 
             // A bib, flat against her, rather than a sheet standing off it.
             Shape("Bib", rig.Chest, new Vector3(0f, ChestLength * 0.45f, 0.095f),
@@ -143,13 +144,14 @@ namespace Granny.EditorTools
             // A shawl over the shoulders. Dark, wide and square across the top: it
             // turns the hunch into a silhouette you can recognise at the far end
             // of a corridor, before any of the face resolves.
-            Shape("Shawl", rig.Chest, new Vector3(0f, ChestLength * 0.84f, -0.022f),
-                new Vector3(0.40f, 0.16f, 0.27f), apron, layer);
-            // Behind the hump, not through it: the hump now fills the space this
-            // used to sit in, and two boxes in one place is how a figure comes to
-            // flicker when it moves.
-            Shape("ShawlBack", rig.Chest, new Vector3(0f, ChestLength * 0.65f, -0.195f),
-                new Vector3(0.335f, 0.25f, 0.045f), apron, layer);
+            // Square across the shoulders, and square on purpose. Rounding this
+            // one too turned her front into a bosom — a sphere is widest at its
+            // middle, so it bulged out where a shawl should be flat. A shawl over
+            // shoulders is wide and shallow; only the thing underneath it is
+            // round. It also has to reach as far out as the arms hang, or the arm
+            // begins in mid-air beside her.
+            Shape("Shawl", rig.Chest, new Vector3(0f, ChestLength * 0.84f, -0.03f),
+                new Vector3(0.42f, 0.16f, 0.27f), apron, layer);
 
             // The head is counter-rotated so she still looks where she is going
             // despite the hunch: chin up, eyes under the brow. It is the single
@@ -363,6 +365,31 @@ namespace Granny.EditorTools
             Material material, int layer)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(bone, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localScale = size;
+            go.layer = layer;
+
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.GetComponent<MeshRenderer>().sharedMaterial = material;
+        }
+
+        /// <summary>
+        /// A squashed sphere.
+        ///
+        /// Everything else about her is boxes and that is the right call — at the
+        /// light level she is seen at, what carries is the arrangement of dark and
+        /// pale, and a box does that as cheaply as anything. Two shapes are the
+        /// exception, and both are cloth over a curve: a hump and a shawl. Built
+        /// square they do not read as a back and a wrap, they read as a crate
+        /// strapped to a mannequin, which is what the first version looked like
+        /// from the side.
+        /// </summary>
+        static void Blob(string name, Transform bone, Vector3 localPosition, Vector3 size,
+            Material material, int layer)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             go.name = name;
             go.transform.SetParent(bone, false);
             go.transform.localPosition = localPosition;

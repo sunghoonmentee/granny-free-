@@ -56,18 +56,36 @@ if (-not (Test-Path $projectDir)) { throw "Unity project not found at $projectDi
 if (-not $LogDir) { $LogDir = Join-Path $repoRoot 'unity-logs' }
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
+function Get-RunningEditor {
+    # The editor, and only the editor.
+    #
+    # Unity Hub runs a helper of its own called unity.exe — "unity.exe serve",
+    # out of the Hub's resources folder — so a name match finds the Hub as well
+    # and waits sixty seconds for something that is never going to exit. That
+    # bites at the worst possible moment: the Hub is open precisely when somebody
+    # has just gone there to renew the licence, so the toolchain appears to break
+    # at the exact moment it was fixed.
+    #
+    # Matching on the path is what separates them: the editor lives under the
+    # Hub's Editor folder, the helper under the Hub's own resources. Matched as
+    # a wildcard rather than a regex — a Windows path is mostly backslashes, and
+    # every one of them is an escape sequence to a regex engine.
+    Get-Process -Name 'Unity' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -and $_.Path -notlike ('*' + [char]92 + 'Unity Hub' + [char]92 + 'resources' + [char]92 + '*') }
+}
+
 function Wait-ForUnityExit {
     # A finished batchmode run keeps a handle on Temp/ for a moment longer. Launching
     # again too early makes Unity declare the project folder read-only and die before
     # it has even opened a log file.
     for ($i = 0; $i -lt 60; $i++) {
-        if (-not (Get-Process -Name 'Unity' -ErrorAction SilentlyContinue)) {
+        if (-not (Get-RunningEditor)) {
             Start-Sleep -Milliseconds 750
             return
         }
         Start-Sleep -Seconds 1
     }
-    throw 'A Unity process is still running after 60s. Close the editor and retry.'
+    throw 'A Unity editor is still running after 60s. Close it and retry.'
 }
 
 function Clear-StaleLock {
