@@ -22,6 +22,7 @@
 | 무엇 | 어떻게 |
 |---|---|
 | 게임 하기 | 바탕화면 **`아가타의 집`** 바로가기, 또는 `Build/AgatasHouse/AgatasHouse.exe` |
+| **컴파일만 확인 (Unity 없이)** | `./tools/compile.ps1` |
 | 전체 다시 짓기 | `./tools/unity.ps1 run -Method Granny.EditorTools.RebuildAll.Run` |
 | 테스트 | `./tools/unity.ps1 test -Platform EditMode` / `-Platform PlayMode` |
 | 실행 파일 굽기 | `./tools/unity.ps1 run -Method Granny.EditorTools.GameBuilder.BuildWindows` |
@@ -31,6 +32,12 @@
 | 모델 치수 재기 | `./tools/unity.ps1 run -Method Granny.EditorTools.ModelReport.Parts` |
 | 모델 받기 | `python tools/get-model.py --list <이름>` → `python tools/get-model.py <이름>` |
 | 플레이 녹화 | `./tools/unity.ps1 test -Platform PlayMode -WithGraphics -Extra @('-runScenario','-testFilter','HearingScenarioCapture')` |
+
+> **Unity 라이선스가 만료되면 위의 모든 것이 한꺼번에 멈춥니다.** Personal 라이선스는
+> 30일쯤마다 끊기고, 되살리는 방법은 **사람이 Unity Hub에 로그인하는 것** 하나뿐입니다.
+> 그때 유일하게 남는 검사가 `./tools/compile.ps1`입니다 — Unity가 IDE용으로 생성해 둔
+> `.csproj`를 .NET SDK로 빌드합니다. DLL을 읽는 데는 라이선스가 필요 없습니다.
+> **통과해도 "컴파일은 된다"일 뿐, "동작한다"가 아닙니다.**
 
 **빌더 실행 순서는 `RebuildAll` 하나에 고정되어 있습니다.** 순서를 직접 바꿔 돌리면
 `HouseBuilder`가 지우고 다시 만드는 마커를 `GrannyBuilder`가 가리키게 되어 null이 생깁니다.

@@ -38,7 +38,12 @@ namespace Granny.EditorTools
         const float Thigh = 0.44f;
         const float Shin = 0.42f;
 
-        const float ShoulderWidth = 0.22f;
+        // Shoulders wider than the chest, on purpose. The arms used to hang
+        // inside the body's own outline, so from the front she was one mass with
+        // a head on it — which is a mannequin. Pushing them out past the ribs is
+        // what separates arm from torso in silhouette, and silhouette is all she
+        // has at the distance she is usually seen from.
+        const float ShoulderWidth = 0.255f;
         const float HipWidth = 0.12f;
 
         public sealed class Rig
@@ -92,7 +97,7 @@ namespace Granny.EditorTools
 
             // ---- spine ----------------------------------------------------
             rig.Hips = Bone("Hips", body, new Vector3(0f, HipHeight, 0f));
-            Shape("Hips", rig.Hips, new Vector3(0f, 0.02f, 0f), new Vector3(0.26f, 0.16f, 0.18f), cloth, layer);
+            Shape("Hips", rig.Hips, new Vector3(0f, 0.02f, 0f), new Vector3(0.25f, 0.16f, 0.175f), cloth, layer);
 
             // The nightdress, to mid-shin. It hangs from the hips, so it stays
             // vertical however far she folds over it — which is what cloth does,
@@ -113,23 +118,38 @@ namespace Granny.EditorTools
             // The hunch lives here. Everything above it inherits the lean, which
             // is why she reads as bent rather than as leaning.
             rig.Spine = Bone("Spine", rig.Hips, new Vector3(0f, 0.08f, 0f), new Vector3(14f, 0f, 0f));
+            // Thin. An old woman who has stopped eating is frightening; a wide
+            // one is a wrestler in a nightdress, and every box here was built a
+            // size too generous.
             Shape("Belly", rig.Spine, new Vector3(0f, SpineLength * 0.5f, 0f),
-                new Vector3(0.32f, SpineLength, 0.22f), cloth, layer);
+                new Vector3(0.27f, SpineLength, 0.19f), cloth, layer);
 
             rig.Chest = Bone("Chest", rig.Spine, new Vector3(0f, SpineLength, 0f), new Vector3(8f, 0f, 5f));
             Shape("Ribs", rig.Chest, new Vector3(0f, ChestLength * 0.5f, 0f),
-                new Vector3(0.34f, ChestLength, 0.21f), cloth, layer);
+                new Vector3(0.285f, ChestLength, 0.185f), cloth, layer);
+
+            // The hump. It is the one piece of her that is not a simplification
+            // of a person: a mass on the upper back, behind and above the chest,
+            // so that the stoop reads as something she is carrying rather than as
+            // a figure leaning forward. From behind it is the first thing you see
+            // of her, and from the side it is the whole shape.
+            Shape("Hunch", rig.Chest, new Vector3(0f, ChestLength * 0.74f, -0.1f),
+                new Vector3(0.30f, 0.235f, 0.165f), cloth, layer);
+
             // A bib, flat against her, rather than a sheet standing off it.
-            Shape("Bib", rig.Chest, new Vector3(0f, ChestLength * 0.45f, 0.105f),
+            Shape("Bib", rig.Chest, new Vector3(0f, ChestLength * 0.45f, 0.095f),
                 new Vector3(0.22f, ChestLength * 0.8f, 0.02f), apron, layer);
 
             // A shawl over the shoulders. Dark, wide and square across the top: it
             // turns the hunch into a silhouette you can recognise at the far end
             // of a corridor, before any of the face resolves.
-            Shape("Shawl", rig.Chest, new Vector3(0f, ChestLength * 0.82f, -0.012f),
-                new Vector3(0.385f, 0.15f, 0.25f), apron, layer);
-            Shape("ShawlBack", rig.Chest, new Vector3(0f, ChestLength * 0.5f, -0.1f),
-                new Vector3(0.36f, ChestLength * 0.75f, 0.05f), apron, layer);
+            Shape("Shawl", rig.Chest, new Vector3(0f, ChestLength * 0.84f, -0.022f),
+                new Vector3(0.40f, 0.16f, 0.27f), apron, layer);
+            // Behind the hump, not through it: the hump now fills the space this
+            // used to sit in, and two boxes in one place is how a figure comes to
+            // flicker when it moves.
+            Shape("ShawlBack", rig.Chest, new Vector3(0f, ChestLength * 0.65f, -0.195f),
+                new Vector3(0.335f, 0.25f, 0.045f), apron, layer);
 
             // The head is counter-rotated so she still looks where she is going
             // despite the hunch: chin up, eyes under the brow. It is the single
@@ -264,11 +284,16 @@ namespace Granny.EditorTools
                 new Vector3(-14f, 0f, -15f * sign));
 
             Shape($"Sleeve{side}", upper, new Vector3(0f, -UpperArm * 0.5f, 0f),
-                new Vector3(0.11f, UpperArm, 0.11f), cloth, layer);
+                new Vector3(0.1f, UpperArm, 0.1f), cloth, layer);
+
+            // The cuff the sleeve ends in, so the arm has a joint rather than
+            // changing colour halfway down.
+            Shape($"Cuff{side}", upper, new Vector3(0f, -UpperArm + 0.015f, 0f),
+                new Vector3(0.108f, 0.06f, 0.108f), cloth, layer);
 
             var lower = Bone($"Forearm{side}", upper, new Vector3(0f, -UpperArm, 0f), new Vector3(10f, 0f, 0f));
             Shape($"Forearm{side}Flesh", lower, new Vector3(0f, -LowerArm * 0.5f, 0f),
-                new Vector3(0.085f, LowerArm, 0.085f), skin, layer);
+                new Vector3(0.072f, LowerArm, 0.072f), skin, layer);
 
             var hand = Bone($"Hand{side}", lower, new Vector3(0f, -LowerArm, 0f));
             Shape($"Hand{side}Palm", hand, new Vector3(0f, -0.045f, 0f),
@@ -302,11 +327,19 @@ namespace Granny.EditorTools
             // flickers when it moves.
             var thigh = Bone($"Thigh{side}", hips, new Vector3(HipWidth * sign, -0.06f, 0f));
             Shape($"Thigh{side}Flesh", thigh, new Vector3(0f, -Thigh * 0.6f, 0f),
-                new Vector3(0.13f, Thigh * 0.8f, 0.13f), skin, layer);
+                new Vector3(0.115f, Thigh * 0.8f, 0.115f), skin, layer);
 
             var shin = Bone($"Shin{side}", thigh, new Vector3(0f, -Thigh, 0f));
+            // Thinner than the thigh, and thinner than it was. The lower leg is
+            // the only part of her the player sees below the nightdress, so it is
+            // carrying the whole impression of what is under it.
             Shape($"Shin{side}Flesh", shin, new Vector3(0f, -Shin * 0.5f, 0f),
-                new Vector3(0.125f, Shin, 0.125f), skin, layer);
+                new Vector3(0.1f, Shin, 0.1f), skin, layer);
+
+            // A knob of bone at the ankle. One box, and it is the difference
+            // between a leg and a chair leg.
+            Shape($"Ankle{side}", shin, new Vector3(0f, -Shin + 0.03f, 0f),
+                new Vector3(0.082f, 0.075f, 0.082f), skin, layer);
 
             // Bare feet. She never wears shoes, which is why her own footsteps
             // are not the sound the player navigates by — the stick is.
