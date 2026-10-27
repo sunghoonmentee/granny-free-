@@ -1078,6 +1078,19 @@ namespace Granny.EditorTools
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
 
+            // The house's own voice, which means nothing and is never heard by
+            // her. Wired here because it needs the speaker and the bank, both of
+            // which are right above it.
+            if (bank != null && bank.Settle != null)
+            {
+                var settling = root.gameObject.AddComponent<HouseSettling>();
+
+                var so = new SerializedObject(settling);
+                so.FindProperty("world").objectReferenceValue = world;
+                so.FindProperty("settle").objectReferenceValue = bank.Settle;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
             // The tick goes on the clock that is actually standing in the hall.
             //
             // There were two of them. This builder put a plain brown box by the

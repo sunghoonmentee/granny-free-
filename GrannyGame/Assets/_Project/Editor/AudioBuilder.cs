@@ -46,6 +46,7 @@ namespace Granny.EditorTools
             Write("heartbeat", Heartbeat());
             Write("clock", ClockTick());
             Write("scare", Scare());
+            Write("settle", Settle());
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -112,6 +113,7 @@ namespace Granny.EditorTools
             so.FindProperty("heartbeat").objectReferenceValue = Clip("heartbeat");
             so.FindProperty("clock").objectReferenceValue = Clip("clock");
             so.FindProperty("scare").objectReferenceValue = Clip("scare");
+            so.FindProperty("settle").objectReferenceValue = Clip("settle");
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorUtility.SetDirty(bank);
@@ -454,6 +456,48 @@ namespace Granny.EditorTools
                 var grit = (float)(rng.NextDouble() * 2.0 - 1.0) * 0.3f;
 
                 samples[i] = (Mathf.Sin(phase) + grit) * cut * 0.75f;
+            }
+
+            return samples;
+        }
+
+        /// <summary>
+        /// A beam somewhere taking the weight of the house differently.
+        ///
+        /// Low, slow and tuneless, and nothing like the floorboard creak. That
+        /// distance is the whole point: a creak is a signal the player learns to
+        /// read, and a sound that could be mistaken for one would make every real
+        /// creak worth less. This has to be unmistakably *the building* — so it
+        /// sits an octave below, it swells instead of snapping, and it never
+        /// resolves to a pitch you could hum.
+        /// </summary>
+        static float[] Settle()
+        {
+            var samples = Buffer(2.2f);
+            var rng = new System.Random(211);
+
+            // Two detuned low tones sliding against each other. The beating
+            // between them is what makes it sound like strain rather than a note.
+            var drift = (float)(rng.NextDouble() * 6.0 + 2.0);
+
+            for (var i = 0; i < samples.Length; i++)
+            {
+                var t = (float)i / SampleRate;
+                var life = (float)i / samples.Length;
+
+                var fall = Mathf.Lerp(1f, 0.82f, life);
+
+                var low = Mathf.Sin(2f * Mathf.PI * 54f * fall * t);
+                var beat = Mathf.Sin(2f * Mathf.PI * (54f + drift) * fall * t) * 0.8f;
+                var body = Mathf.Sin(2f * Mathf.PI * 108f * fall * t) * 0.3f;
+
+                // A little grain, so it is timber rather than an organ.
+                var grain = (float)(rng.NextDouble() * 2.0 - 1.0) * 0.06f;
+
+                // In slowly, out slowly. A groan with an attack is a knock.
+                var shape = Mathf.Sin(Mathf.PI * Mathf.Pow(life, 0.8f));
+
+                samples[i] = (low + beat + body + grain) * shape * 0.22f;
             }
 
             return samples;

@@ -22,6 +22,12 @@
     whenever Unity opens the project, so on a fresh clone this script has
     nothing to build until Unity has run once.
 
+    That also means this check goes stale the moment a NEW .cs file is added:
+    the file is not in any generated project yet, so anything referring to it
+    fails here with CS0246 while being perfectly correct. A failure naming a
+    type you have just created is this, not your code. Run Unity once — any
+    action — and the projects catch up.
+
 .EXAMPLE
     ./tools/compile.ps1
     ./tools/compile.ps1 -Project Granny.Editor.csproj
