@@ -1078,16 +1078,19 @@ namespace Granny.EditorTools
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
 
-            // The clock stands in the hall, by the front door, so its tick is
-            // loudest exactly where the player spends the most nervous minutes.
-            var clock = new GameObject("HallClock");
-            clock.transform.SetParent(root, false);
-            clock.transform.position = new Vector3(-2.5f, GroundY + 1.4f, 9.4f);
-
-            BuildKit.Box(clock.transform, "Case", new Vector3(0f, 0f, 0f),
-                new Vector3(0.4f, 1.1f, 0.22f),
-                BuildKit.Material("PropClock", new Color(0.26f, 0.19f, 0.13f)),
-                GameLayers.Prop);
+            // The tick goes on the clock that is actually standing in the hall.
+            //
+            // There were two of them. This builder put a plain brown box by the
+            // front door and hung the tick on it, and the clutter pass later
+            // stood a real grandfather clock four feet away — so the hall had a
+            // case with a face and hands that was silent, and a featureless box
+            // that ticked. Neither looked wrong on its own, which is how it
+            // survived being photographed half a dozen times.
+            //
+            // The clutter is placed before this runs, so the real one can simply
+            // be found. The box stays only as a fallback for a house built before
+            // the model was downloaded.
+            var clock = FindHallClock() ?? FallbackClock(root);
 
             if (bank != null && bank.Clock != null)
             {
@@ -1101,6 +1104,42 @@ namespace Granny.EditorTools
                 source.maxDistance = 22f;
                 source.volume = 0.5f;
             }
+        }
+
+        /// <summary>
+        /// The grandfather clock the clutter pass stood in the hall, if it is
+        /// there. Matched on the model's name rather than on a position, so
+        /// moving it in the clutter table moves the tick with it.
+        /// </summary>
+        static GameObject FindHallClock()
+        {
+            var clutter = GameObject.Find("House")?.transform.Find("Clutter");
+            if (clutter == null) return null;
+
+            foreach (Transform piece in clutter)
+                if (piece.name.StartsWith("vintage_grandfather_clock"))
+                    return piece.gameObject;
+
+            return null;
+        }
+
+        /// <summary>
+        /// A case to hang the tick on when no clock has been downloaded. Plain,
+        /// and deliberately not in the hall's good spot: if it is ever seen, the
+        /// model is missing and that should look like something is missing.
+        /// </summary>
+        static GameObject FallbackClock(Transform parent)
+        {
+            var clock = new GameObject("HallClock");
+            clock.transform.SetParent(parent, false);
+            clock.transform.position = new Vector3(-2.5f, GroundY + 1.4f, 9.4f);
+
+            BuildKit.Box(clock.transform, "Case", Vector3.zero,
+                new Vector3(0.4f, 1.1f, 0.22f),
+                BuildKit.Material("PropClock", new Color(0.26f, 0.19f, 0.13f)),
+                GameLayers.Prop);
+
+            return clock;
         }
 
         static void PlaceMarkers()

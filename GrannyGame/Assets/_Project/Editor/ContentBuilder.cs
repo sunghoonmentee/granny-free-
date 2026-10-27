@@ -998,6 +998,34 @@ namespace Granny.EditorTools
                 piece.layer = GameLayers.Prop;
             }
 
+            // Curtains, pulled apart.
+            //
+            // Hanging them closed would be the obvious thing and it would hide the
+            // only part of this that says anything: the boards. Open, they frame
+            // the boards instead, and they say something of their own — somebody
+            // drew these back to look out of a window that had already been nailed
+            // over, and then stopped bothering.
+            //
+            // One hangs straight and one hangs off a lost hook. Curtains do all
+            // look alike, so the sixteen windows being identical costs nothing;
+            // two panels that match each other exactly is what would look wrong.
+            var cloth = EnsureMaterial("PropCurtain", new Color(0.26f, 0.17f, 0.15f));
+
+            Box("Rail", root.transform, new Vector3(0f, sill + height + 0.14f, 0.075f),
+                new Vector3(width + 0.46f, 0.045f, 0.045f), frame);
+
+            var left = Box("CurtainW", root.transform,
+                new Vector3(-0.56f, sill + height * 0.47f, 0.08f),
+                new Vector3(0.34f, height + 0.2f, 0.05f), cloth);
+
+            var right = Box("CurtainE", root.transform,
+                new Vector3(0.58f, sill + height * 0.5f, 0.08f),
+                new Vector3(0.3f, height + 0.1f, 0.05f), cloth);
+
+            // The hook that has gone, on one side only.
+            left.transform.localRotation = Quaternion.Euler(0f, 0f, 4.5f);
+            right.transform.localRotation = Quaternion.Euler(0f, 0f, -1.5f);
+
             // Scenery: it is flat against a wall that already stops everything.
             // Its own colliders would only give the player something invisible to
             // catch on while they are running.

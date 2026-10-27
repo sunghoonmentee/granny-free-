@@ -65,6 +65,12 @@ namespace Granny.EditorTools
             ("TruckPaint", "Concrete034", 1.2f, new Color(0.46f, 0.40f, 0.34f)),
             ("PropWindowFrame", "Planks037A", 0.35f, new Color(0.34f, 0.28f, 0.21f)),
             ("PropWindowBoard", "Planks037A", 0.3f, new Color(0.52f, 0.43f, 0.31f)),
+
+            // The curtains. Wallpaper rather than plank, because its weave is the
+            // nearest thing in the downloaded sets to hanging cloth, and because
+            // at this size what is wanted is a surface that is not flat rather
+            // than a surface that is identifiably anything.
+            ("PropCurtain", "Wallpaper001A", 0.45f, new Color(0.28f, 0.17f, 0.15f)),
             // No cloth scan. The one that was downloaded has a strong blue cast
             // that a warm tint could not pull out — she came out dressed in
             // denim. Her clothes and the bedding stay flat colour, which is not
